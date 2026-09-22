@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>One Thing</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23163B28'/%3E%3Cpath d='M32 14 L36.5 26.5 L50 26.5 L39 34.5 L43 47 L32 39 L21 47 L25 34.5 L14 26.5 L27.5 26.5 Z' fill='%23E7C765'/%3E%3C/svg%3E">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+
+  :root{
+    --green:#163B28;
+    --gold:#E7C765;
+    --gold-dim:#B89A4E;
+    --cream:#F1E4B8;
+    --line:#3A5C48;
+  }
+  body.mode-personal{
+    --green:#1B2340;
+    --gold:#E8A9A0;
+    --gold-dim:#B9847E;
+    --cream:#F1E2D8;
+    --line:#33406B;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:var(--green);
+    transition:background 0.35s ease;
+    background-image:
+      radial-gradient(ellipse at 50% -10%, rgba(231,199,101,0.06), transparent 55%);
+    color:var(--cream);
+    font-family:'Fraunces', Georgia, serif;
+  }
+  body{
+    display:flex; flex-direction:column;
+    align-items:center;
+    min-height:100vh; width:100vw;
+    text-align:center;
+    padding:9vh 6vw 6vh;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+
+  .clock{
+    position:fixed; top:3vh; left:50%;
+    transform:translateX(-50%);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; letter-spacing:0.14em;
+    color:var(--gold-dim);
+    user-select:none;
+    opacity:0.7;
+  }
+
+  .savebadge{
+    position:fixed; top:3vh; right:3.5vw;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px; letter-spacing:0.1em;
+    color:var(--gold-dim);
+    opacity:0;
+    transition:opacity 0.4s;
+    pointer-events:none;
+  }
+  .savebadge.show{ opacity:0.5; }
+
+  .modeSwitch{
+    position:fixed; top:2.8vh; left:3.5vw;
+    width:52px; height:28px;
+    background:rgba(0,0,0,0.22);
+    border:1px solid var(--line);
+    border-radius:999px;
+    cursor:pointer;
+    padding:2px;
+    box-sizing:border-box;
+  }
+  .modeThumb{
+    width:22px; height:22px;
+    border-radius:50%;
+    background:var(--gold);
+    color:var(--green);
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform 0.25s ease;
+    user-select:none;
+  }
+  body.mode-personal .modeThumb{
+    transform:translateX(22px);
+  }
+
+  .fade-ui{ transition:opacity 0.5s ease; }
+  body.ui-hidden .fade-ui{ opacity:0; pointer-events:none; }
+
+  .immersiveToggle{
+    position:fixed; bottom:2.8vh; right:3.5vw;
+    top:auto; left:auto;
+  }
+  .immersiveThumb svg{
+    display:block;
+    color:var(--green);
+  }
+  .immersiveThumb .eyeSlash{ opacity:0; transition:opacity 0.2s; }
+  .immersiveToggle.active .immersiveThumb{
+    transform:translateX(22px);
+  }
+  .immersiveToggle.active .eyeSlash{ opacity:1; }
+
+  .breakdown{
+    margin-top:14px;
+    max-width:560px;
+  }
+  .breakdownToggle{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    color:var(--gold-dim);
+    opacity:0.55;
+    cursor:pointer;
+    transition:opacity 0.15s, color 0.15s;
+  }
+  .breakdownToggle:hover{ opacity:0.9; color:var(--gold); }
+  .breakdownPanel{
+    margin-top:10px;
+    display:flex; flex-direction:column;
+    align-items:center;
+    gap:8px;
+  }
+  .breakdownInput{
+    background:none;
+    border:none;
+    border-bottom:1px solid var(--line);
+    color:var(--cream);
+    font-family:'Fraunces', Georgia, serif;
+    font-size:15px;
+    text-align:center;
+    padding:4px 6px 7px 6px;
+    outline:none;
+    width:280px;
+    opacity:0.85;
+  }
+  .breakdownInput::placeholder{ color:var(--gold-dim); opacity:0.65; font-style:italic; }
+  .breakdownInput:focus{ opacity:1; border-bottom-color:var(--gold-dim); }
+  .breakdownList{
+    list-style:none; margin:0; padding:0;
+    display:flex; flex-direction:column; gap:6px;
+    max-width:420px;
+  }
+  .breakdownList li{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:15px;
+    color:var(--cream);
+    opacity:0.8;
+    cursor:pointer;
+    padding:2px 22px 2px 26px;
+    position:relative;
+    text-align:left;
+    transition:opacity 0.15s;
+  }
+  .breakdownList li::before{
+    content:'';
+    position:absolute; left:0; top:5px;
+    width:12px; height:12px;
+    border:1.5px solid var(--gold-dim);
+    border-radius:4px;
+  }
+  .breakdownList li.checked{
+    opacity:0.4;
+    text-decoration:line-through;
+  }
+  .breakdownList li.checked::before{
+    background:var(--gold);
+    border-color:var(--gold);
+  }
+  .breakdownList li:hover{ opacity:1; }
+  .breakdownList li.checked:hover{ opacity:0.55; }
+  .breakdownList li .stepRemove{
+    position:absolute; right:2px; top:2px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--gold-dim);
+    opacity:0;
+    transition:opacity 0.15s;
+  }
+  .breakdownList li:hover .stepRemove{ opacity:0.6; }
+  .breakdownList li .stepRemove:hover{ opacity:1 !important; }
+
+  .meetingNotesWrap{
+    margin-top:16px;
+    max-width:560px;
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .meetingNotesLabel{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    opacity:0.6;
+    margin-bottom:8px;
+  }
+  .meetingNotesArea{
+    width:100%;
+    max-width:480px;
+    min-height:90px;
+    background:rgba(0,0,0,0.12);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--cream);
+    font-family:'Fraunces', Georgia, serif;
+    font-size:15px;
+    font-weight:400;
+    line-height:1.5;
+    padding:12px 14px;
+    outline:none;
+    resize:vertical;
+  }
+  .meetingNotesArea::placeholder{ color:var(--gold-dim); opacity:0.55; font-style:italic; }
+  .meetingNotesArea:focus{ border-color:var(--gold-dim); background:rgba(0,0,0,0.18); }
+
+  /* meeting prep ritual */
+  .meetingVeil{
+    position:fixed; inset:0; z-index:400;
+    background:rgba(0,0,0,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    animation:meetingFade 0.2s ease;
+  }
+  @keyframes meetingFade{ from{ opacity:0; } to{ opacity:1; } }
+  .meetingCard{
+    width:100%; max-width:560px;
+    background:var(--green);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:38px 40px;
+    box-shadow:0 30px 70px -20px rgba(0,0,0,0.6);
+    text-align:left;
+    animation:meetingIn 0.25s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes meetingIn{ from{ opacity:0; transform:translateY(10px) scale(.98); } to{ opacity:1; transform:none; } }
+  .meetingDots{
+    display:flex; gap:6px;
+    margin-bottom:18px;
+  }
+  .meetingDots i{
+    height:4px; flex:1;
+    border-radius:2px;
+    background:var(--line);
+  }
+  .meetingDots i.on, .meetingDots i.now{ background:var(--gold); }
+  .meetingReminder{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    opacity:0.7;
+    margin-bottom:22px;
+  }
+  .meetingLabel{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:clamp(24px, 3.4vw, 32px);
+    font-weight:600;
+    color:var(--gold);
+    line-height:1.3;
+    margin-bottom:20px;
+  }
+  .meetingField{
+    width:100%;
+    background:rgba(0,0,0,0.18);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--cream);
+    font-family:'Fraunces', Georgia, serif;
+    font-size:18px;
+    padding:12px 14px;
+    outline:none;
+    box-sizing:border-box;
+  }
+  .meetingField::placeholder{ color:var(--gold-dim); opacity:0.55; font-style:italic; }
+  .meetingField:focus{ border-color:var(--gold-dim); }
+  textarea.meetingField{ min-height:96px; resize:vertical; line-height:1.5; }
+  .meetingActs{
+    display:flex; align-items:center; gap:10px;
+    margin-top:26px;
+  }
+  .meetingEsc{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.1em;
+    color:var(--gold-dim);
+    opacity:0.45;
+    margin-top:16px;
+    text-align:center;
+  }
+  .meetingSummary .meetingSummaryList{
+    display:flex; flex-direction:column; gap:12px;
+    font-family:'Fraunces', Georgia, serif;
+    font-size:15px;
+    color:var(--cream);
+    line-height:1.5;
+    margin-bottom:6px;
+  }
+  .meetingSummaryList b{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    font-weight:700;
+    display:block;
+    margin-bottom:3px;
+  }
+  .meetingSummaryRow{
+    cursor:pointer;
+    padding:6px 8px;
+    margin:-6px -8px;
+    border-radius:8px;
+    transition:background 0.15s;
+  }
+  .meetingSummaryRow:hover{ background:rgba(231,199,101,0.08); }
+  .meetingEditable{ cursor:pointer; transition:opacity 0.15s; }
+  .meetingEditable:hover{ opacity:0.75; }
+
+  .stack{
+    display:flex; flex-direction:column;
+    align-items:center;
+  }
+
+  .eyebrow{
+    display:flex; align-items:center; gap:9px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.32em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    margin-bottom:16px;
+    cursor:grab;
+    transition:opacity 0.15s;
+  }
+  .eyebrow:active{ cursor:grabbing; }
+  .eyebrow.dragging{ opacity:0.35; }
+  .eyebrow::before, .eyebrow::after{ content:'★'; font-size:8px; }
+
+  .sidepanel.drop-target{
+    background:rgba(231,199,101,0.06);
+    border-radius:12px;
+    box-shadow:0 0 0 1px var(--gold-dim) inset;
+  }
+
+  .task{
+    font-size:clamp(28px, 4.6vw, 66px);
+    font-weight:600;
+    line-height:1.2;
+    max-width:1000px;
+    outline:none;
+    cursor:text;
+    padding:4px 16px;
+    border-radius:6px;
+    color:var(--gold);
+    transition:background 0.15s, box-shadow 0.15s;
+  }
+  .task:empty::before{
+    content: attr(data-placeholder);
+    color:var(--cream);
+    opacity:0.35;
+    font-style:italic;
+    font-weight:500;
+  }
+  .task:focus{ background:rgba(231,199,101,0.08); }
+  .task.drop-target{
+    background:rgba(231,199,101,0.14);
+    box-shadow:0 0 0 2px var(--gold-dim);
+  }
+
+  .timer{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:800;
+    font-size:clamp(100px, 17vw, 260px);
+    letter-spacing:0.01em;
+    color:var(--cream);
+    line-height:0.95;
+    font-variant-numeric:tabular-nums;
+    margin-top:34px;
+    text-shadow:0 0 80px rgba(241,228,184,0.14);
+  }
+  @keyframes alarmPulse{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.035); }
+  }
+  .timer.alarm-ringing{
+    animation:alarmPulse 0.55s ease-in-out infinite;
+    color:var(--gold);
+  }
+
+  .badgeRow{
+    margin-top:32px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+
+  .sessions{
+    display:flex; align-items:baseline; gap:8px;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    transition:transform 0.25s, color 0.25s;
+  }
+  .sessions.pulse{ transform:scale(1.08); color:var(--gold); }
+  .sessions .count{ font-size:20px; font-weight:800; color:var(--gold); }
+
+  .alarmBadge{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:16px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    padding:11px 24px;
+    border-radius:999px;
+    cursor:pointer;
+    border:1.5px solid var(--line);
+    color:var(--gold-dim);
+    background:transparent;
+    transition:background 0.2s, border-color 0.2s, color 0.2s, transform 0.25s;
+    user-select:none;
+    white-space:nowrap;
+  }
+  .alarmBadge:hover{ border-color:var(--gold); color:var(--gold); }
+  .alarmBadge.armed{
+    border-color:var(--gold);
+    color:var(--gold);
+    background:rgba(231,199,101,0.12);
+  }
+  .alarmBadge.ringing{
+    background:var(--gold);
+    color:var(--green);
+    border-color:var(--gold);
+    animation:alarmPulse 0.55s ease-in-out infinite;
+  }
+  .alarmInput{
+    background:transparent;
+    border:1.5px solid var(--gold-dim);
+    color:var(--cream);
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.05em;
+    width:150px;
+    text-align:center;
+    outline:none;
+    padding:10px 16px;
+    border-radius:999px;
+  }
+  .alarmInput::placeholder{ color:var(--gold-dim); opacity:0.7; font-weight:500; }
+
+  .inkbar{
+    width:min(520px, 58vw); height:10px;
+    background:var(--line);
+    position:relative;
+    overflow:hidden;
+    border-radius:5px;
+    margin-top:24px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);
+  }
+  .inkfill{
+    position:absolute; left:0; top:0; bottom:0;
+    width:0%;
+    background:var(--gold);
+    box-shadow:0 0 10px rgba(231,199,101,0.55);
+    transition:width 1s linear;
+  }
+
+
+  .controls{
+    margin-top:24px;
+    display:flex; gap:14px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+  }
+  .btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--cream);
+    cursor:pointer;
+    padding:8px 18px;
+    border-radius:999px;
+    opacity:0.7;
+    transition:opacity 0.15s, border-color 0.15s, color 0.15s;
+    font-family:inherit; font-size:inherit; letter-spacing:inherit; font-weight:500;
+  }
+  .btn:hover{ opacity:1; border-color:var(--gold); color:var(--gold); }
+  .btn.active{ opacity:1; border-color:var(--gold); color:var(--gold); background:rgba(231,199,101,0.08); }
+
+  .btn-primary{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--green);
+    opacity:1;
+    font-weight:700;
+  }
+  .btn-primary:hover{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--green);
+    filter:brightness(1.06);
+  }
+
+  .btn-ghost{
+    opacity:0.4;
+    border-color:transparent;
+  }
+  .btn-ghost:hover{
+    opacity:0.8;
+    border-color:var(--line);
+    color:var(--cream);
+  }
+
+  .soundRow{
+    margin-top:16px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .soundLabel{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    opacity:0.5;
+    margin-right:2px;
+  }
+  .soundChip{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--cream);
+    cursor:pointer;
+    padding:6px 14px;
+    border-radius:999px;
+    opacity:0.65;
+    transition:opacity 0.15s, border-color 0.15s, color 0.15s, background 0.15s;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    font-weight:500;
+  }
+  .soundChip:hover{ opacity:1; border-color:var(--gold); color:var(--gold); }
+  .soundChip.active{
+    opacity:1;
+    border-color:var(--gold);
+    color:var(--gold);
+    background:rgba(231,199,101,0.12);
+  }
+
+  .soundVolume{
+    -webkit-appearance:none;
+    appearance:none;
+    width:0;
+    height:3px;
+    background:var(--line);
+    border-radius:2px;
+    outline:none;
+    cursor:pointer;
+    vertical-align:middle;
+    opacity:0;
+    transition:width 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+  }
+  .soundVolume.show{
+    width:74px;
+    opacity:1;
+    margin-left:2px;
+  }
+  .soundVolume::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:11px; height:11px; border-radius:50%;
+    background:var(--gold);
+    cursor:pointer;
+  }
+  .soundVolume::-moz-range-thumb{
+    width:11px; height:11px; border-radius:50%;
+    background:var(--gold); border:none; cursor:pointer;
+  }
+
+  .hint{
+    position:fixed; bottom:3vh; left:50%;
+    transform:translateX(-50%);
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.08em;
+    color:var(--gold-dim);
+    opacity:0.45;
+  }
+
+  /* shared side-panel skeleton */
+  .sidepanel{
+    position:fixed;
+    top:50%;
+    transform:translateY(-50%);
+    width:220px;
+    max-height:64vh;
+    display:flex; flex-direction:column;
+    text-align:left;
+  }
+  .sidepanel-title{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    opacity:0.65;
+    margin-bottom:10px;
+  }
+  .sidepanel-list{
+    list-style:none; margin:0; padding:0;
+    overflow-y:auto;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .sidepanel-list li{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:14.5px;
+    line-height:1.35;
+    color:var(--cream);
+    padding:3px 6px 3px 16px;
+    border-radius:5px;
+    position:relative;
+  }
+
+  /* parking lot — left */
+  .parkinglot{ left:3.5vw; }
+  .parkinglot-hint{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    color:var(--gold-dim);
+    opacity:0.5;
+    margin-top:8px;
+    letter-spacing:0.04em;
+  }
+  .modeNudge{
+    display:block;
+    width:100%;
+    margin-top:14px;
+    background:none;
+    border:1px solid;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.06em;
+    padding:10px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    opacity:0.7;
+    transition:opacity 0.15s, background 0.15s;
+    text-align:center;
+    line-height:1.4;
+  }
+  .modeNudge:hover{ opacity:1; }
+  .parkinglot-input{
+    background:none;
+    border:none;
+    border-bottom:1px solid var(--line);
+    color:var(--cream);
+    font-family:'Fraunces', Georgia, serif;
+    font-size:14.5px;
+    padding:5px 2px 8px 2px;
+    outline:none;
+    opacity:0.75;
+    margin-bottom:12px;
+    width:100%;
+  }
+  .parkinglot-input::placeholder{ color:var(--gold-dim); opacity:0.7; font-style:italic; }
+  .parkinglot-input:focus{ opacity:1; border-bottom-color:var(--gold-dim); }
+
+  .parkinglot .sidepanel-list li{
+    opacity:0.55;
+    cursor:grab;
+    transition:opacity 0.15s, background 0.15s;
+  }
+  .parkinglot .sidepanel-list li::before{
+    content:'·';
+    position:absolute; left:4px; top:3px;
+    color:var(--gold-dim);
+  }
+  .parkinglot .sidepanel-list li:hover{ opacity:0.95; background:rgba(231,199,101,0.08); }
+  .parkinglot .sidepanel-list li.dragging{ opacity:0.3; cursor:grabbing; }
+  .parkinglot .sidepanel-list li.done{
+    text-decoration:line-through;
+    opacity:0.25;
+  }
+  .parkinglot .sidepanel-list li .time{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.06em;
+    color:var(--gold-dim);
+    opacity:0.8;
+    margin-top:2px;
+  }
+
+  /* done list — right */
+  .donelist{ right:3.5vw; }
+  .donelist .sidepanel-list li{
+    opacity:0.7;
+    color:var(--gold-dim);
+    padding-left:20px;
+    cursor:grab;
+    transition:opacity 0.15s, background 0.15s;
+    animation:fadeIn 0.3s ease;
+  }
+  .donelist .sidepanel-list li:hover{ opacity:1; background:rgba(231,199,101,0.06); }
+  .donelist .sidepanel-list li.dragging{ opacity:0.3; cursor:grabbing; }
+  .donelist .sidepanel-list li::before{
+    content:'✓';
+    position:absolute; left:2px; top:3px;
+    color:var(--gold);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+  }
+  .donelist .sidepanel-list li .time{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.06em;
+    opacity:0.6;
+    margin-top:2px;
+  }
+  .donelist-empty{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--gold-dim);
+    opacity:0.35;
+    font-style:normal;
+  }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(-4px);} to{ opacity:0.7; transform:none; } }
+
+  @media (max-width: 880px){
+    .sidepanel{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="clock fade-ui" id="clock"></div>
+  <div class="savebadge fade-ui" id="savebadge">saved</div>
+  <div class="modeSwitch fade-ui" id="modeSwitch" title="switch between Work and Personal">
+    <div class="modeThumb" id="modeThumb">W</div>
+  </div>
+  <div class="modeSwitch immersiveToggle" id="immersiveToggle" title="hide interface while working (h)">
+    <span class="modeThumb immersiveThumb" id="immersiveThumb">
+      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+        <circle cx="8" cy="8" r="3" fill="currentColor"></circle>
+        <line class="eyeSlash" x1="2.5" y1="2.5" x2="13.5" y2="13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></line>
+      </svg>
+    </span>
+  </div>
+
+  <div class="stack">
+    <div class="eyebrow fade-ui" id="eyebrow" draggable="true" title="drag onto a list to park or finish this task">focus on</div>
+    <div class="task" id="task" contenteditable="true" data-placeholder="what matters right now"></div>
+
+    <div class="breakdown" id="breakdown">
+      <div class="breakdownToggle" id="breakdownToggle">+ break it down</div>
+      <div class="breakdownPanel" id="breakdownPanel" style="display:none;">
+        <input class="breakdownInput" id="breakdownInput" type="text" placeholder="add a step, press enter" />
+        <ul class="breakdownList" id="breakdownList"></ul>
+      </div>
+    </div>
+
+    <div class="meetingNotesWrap" id="meetingNotesWrap" style="display:none;">
+      <div class="meetingNotesLabel">meeting notes</div>
+      <textarea class="meetingNotesArea" id="meetingNotesArea" placeholder="capture thoughts as they come — what you'd otherwise say out loud unfiltered"></textarea>
+    </div>
+
+    <div class="timer" id="timer">00:00</div>
+    <div class="inkbar fade-ui"><div class="inkfill" id="inkfill"></div></div>
+
+    <div class="badgeRow fade-ui">
+      <span class="alarmBadge" id="alarmDisplay" title="click to set a countdown alarm">+ alarm</span>
+      <input class="alarmInput" id="alarmInput" type="number" min="1" max="240" placeholder="minutes" style="display:none;">
+      <span class="alarmBadge" id="checkinBadge" title="click to get a notification every 30 min while a task is running, even in another tab">🔕 check-ins off</span>
+      <div class="sessions" id="sessions"><span class="count">0</span> done today</div>
+    </div>
+
+    <div class="controls fade-ui">
+      <button class="btn btn-primary" id="startPause">start</button>
+      <button class="btn" id="done">mark done</button>
+      <button class="btn btn-ghost" id="reset">reset</button>
+      <button class="btn btn-ghost" id="newDay">start fresh</button>
+      <button class="btn" id="meetingBtn">+ meeting</button>
+    </div>
+
+    <div class="soundRow fade-ui">
+      <span class="soundLabel">focus sound</span>
+      <button class="soundChip" data-sound="brown">brown</button>
+      <button class="soundChip" data-sound="pink">pink</button>
+      <button class="soundChip" data-sound="ocean">ocean</button>
+      <button class="soundChip" data-sound="rain">rain</button>
+      <button class="soundChip" data-sound="zen">zen</button>
+      <input type="range" class="soundVolume" id="soundVolume" min="0" max="100" value="30">
+    </div>
+  </div>
+
+  <div class="hint fade-ui">click the line above to set today's one thing · timer starts on its own once you type</div>
+
+  <div class="sidepanel parkinglot fade-ui">
+    <div class="sidepanel-title">also today</div>
+    <input class="parkinglot-input" id="parkInput" type="text" placeholder="jot it, get back to it later" />
+    <ul class="sidepanel-list" id="parkList"></ul>
+    <div class="parkinglot-hint">drag here to park · drag onto "focus on" to switch</div>
+    <button class="modeNudge" id="modeNudge" style="display:none;"></button>
+  </div>
+
+  <div class="sidepanel donelist fade-ui">
+    <div class="sidepanel-title">done today</div>
+    <ul class="sidepanel-list" id="doneList">
+      <li class="donelist-empty" style="padding-left:0; opacity:0.35;">nothing yet — that's fine</li>
+    </ul>
+    <div class="parkinglot-hint">drag here when done · drag back to resume</div>
+  </div>
+
+  <div id="meetingLayer"></div>
+
+<script>
+  const LAST_MODE_KEY = 'oneThing:lastMode';
+  let currentMode = 'work';
+  try{
+    const savedMode = localStorage.getItem(LAST_MODE_KEY);
+    if(savedMode === 'personal' || savedMode === 'work') currentMode = savedMode;
+  }catch(err){}
+
+  function storageKeyFor(mode){ return 'oneThing:state:' + mode; }
+
+  function faviconFor(mode){
+    return mode === 'personal'
+      ? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231B2340'/%3E%3Ccircle cx='32' cy='32' r='13' fill='%23E8A9A0'/%3E%3C/svg%3E"
+      : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23163B28'/%3E%3Cpath d='M32 14 L36.5 26.5 L50 26.5 L39 34.5 L43 47 L32 39 L21 47 L25 34.5 L14 26.5 L27.5 26.5 Z' fill='%23E7C765'/%3E%3C/svg%3E";
+  }
+
+  function updateFavicon(){
+    const link = document.querySelector('link[rel="icon"]');
+    if(link) link.href = faviconFor(currentMode);
+  }
+
+  // apply the restored mode's theme immediately, before first paint settles
+  document.body.classList.toggle('mode-personal', currentMode === 'personal');
+  updateFavicon();
+
+  function todayStr(){
+    return new Date().toDateString();
+  }
+
+  function tickClock(){
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'}) + '  ·  ' +
+      d.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
+  }
+  tickClock();
+  setInterval(tickClock, 1000*15);
+
+  let seconds = 0;
+  let running = false;
+  let intervalId = null;
+  let sessions = 0;
+  let sessionStartEpoch = null; // ms timestamp when the current run began
+  let baseSeconds = 0;          // seconds already banked before this run
+  let alarmTargetSeconds = null; // elapsed-seconds value at which the alarm should fire
+  let alarmFired = false;
+  let alarmRinging = false;
+  let ringIntervalId = null;
+  let ringCount = 0;
+  let audioCtx = null;
+  let taskIsMeeting = false;
+  const FILL_REF = 25 * 60;
+
+  const timerEl = document.getElementById('timer');
+  const inkfillEl = document.getElementById('inkfill');
+  const startPauseBtn = document.getElementById('startPause');
+  const doneBtn = document.getElementById('done');
+  const taskEl = document.getElementById('task');
+  const sessionsEl = document.getElementById('sessions');
+  const sessionsCountEl = document.querySelector('#sessions .count');
+  const doneList = document.getElementById('doneList');
+  const saveBadge = document.getElementById('savebadge');
+  const alarmDisplay = document.getElementById('alarmDisplay');
+  const alarmInput = document.getElementById('alarmInput');
+  const meetingBtn = document.getElementById('meetingBtn');
+  const meetingNotesWrap = document.getElementById('meetingNotesWrap');
+  const meetingNotesArea = document.getElementById('meetingNotesArea');
+  let draggedDoneLi = null;
+
+  function fmt(s){
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60).toString().padStart(2,'0');
+    const ss = (s % 60).toString().padStart(2,'0');
+    return h > 0 ? (h + ':' + m + ':' + ss) : (m + ':' + ss);
+  }
+
+  // ---- alarm sound (synthesized — no external audio file needed) ----
+  function getAudioCtx(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function playBeep(delay){
+    setTimeout(()=>{
+      try{
+        const ctx = getAudioCtx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.28);
+      }catch(err){ /* audio unsupported or blocked — fail silently */ }
+    }, delay || 0);
+  }
+  function ringSequence(){
+    playBeep(0);
+    playBeep(180);
+    playBeep(360);
+    ringCount++;
+    if(ringCount >= 8) stopRinging();
+  }
+  function startRinging(){
+    ringCount = 0;
+    ringSequence();
+    ringIntervalId = setInterval(ringSequence, 1500);
+  }
+  function stopRinging(){
+    clearInterval(ringIntervalId);
+    ringIntervalId = null;
+    alarmRinging = false;
+    timerEl.classList.remove('alarm-ringing');
+  }
+
+  function clearAlarm(){
+    stopRinging();
+    alarmTargetSeconds = null;
+    alarmFired = false;
+    updateAlarmDisplay();
+  }
+
+  // ---- meeting mode: swaps the eyebrow label and reveals the live notes area ----
+  function updateMeetingUI(){
+    eyebrow.textContent = taskIsMeeting ? 'in a meeting' : 'focus on';
+    meetingNotesWrap.style.display = taskIsMeeting ? 'flex' : 'none';
+  }
+
+  function clearMeetingState(){
+    taskIsMeeting = false;
+    if(meetingNotesArea) meetingNotesArea.value = '';
+    updateMeetingUI();
+  }
+
+  function updateAlarmDisplay(){
+    if(alarmRinging){
+      alarmDisplay.textContent = "⏰ time's up";
+      alarmDisplay.title = 'tap to dismiss';
+      alarmDisplay.classList.remove('armed');
+      alarmDisplay.classList.add('ringing');
+    } else if(alarmTargetSeconds != null){
+      const remaining = Math.max(0, alarmTargetSeconds - seconds);
+      alarmDisplay.textContent = '⏰ ' + fmt(remaining);
+      alarmDisplay.title = 'tap to cancel';
+      alarmDisplay.classList.add('armed');
+      alarmDisplay.classList.remove('ringing');
+    } else {
+      alarmDisplay.textContent = '+ alarm';
+      alarmDisplay.title = 'click to set a countdown alarm';
+      alarmDisplay.classList.remove('armed', 'ringing');
+    }
+  }
+
+  alarmDisplay.addEventListener('click', ()=>{
+    if(alarmRinging){
+      clearAlarm();
+      saveState();
+      return;
+    }
+    if(alarmTargetSeconds != null){
+      clearAlarm();
+      saveState();
+      return;
+    }
+    alarmDisplay.style.display = 'none';
+    alarmInput.style.display = 'inline-block';
+    alarmInput.value = '';
+    alarmInput.placeholder = 'e.g. 25';
+    alarmInput.focus();
+  });
+
+  alarmInput.addEventListener('keydown', (e)=>{
+    e.stopPropagation(); // don't let the global space/t shortcuts fire while typing here
+    if(e.key === 'Enter'){
+      const mins = parseFloat(alarmInput.value);
+      if(mins && mins > 0){
+        getAudioCtx(); // unlock audio now, during this user gesture
+        alarmTargetSeconds = currentSeconds() + Math.round(mins * 60);
+        alarmFired = false;
+      }
+      alarmInput.style.display = 'none';
+      alarmDisplay.style.display = 'inline-block';
+      updateAlarmDisplay();
+      saveState();
+    } else if(e.key === 'Escape'){
+      alarmInput.style.display = 'none';
+      alarmDisplay.style.display = 'inline-block';
+      updateAlarmDisplay();
+    }
+  });
+  alarmInput.addEventListener('blur', ()=>{
+    alarmInput.style.display = 'none';
+    alarmDisplay.style.display = 'inline-block';
+    updateAlarmDisplay();
+  });
+
+  // ---- check-in reminders: a browser notification every 30 min while running,
+  // even when this tab is backgrounded or another window has focus (as long
+  // as the browser itself is still open) ----
+  const CHECKIN_INTERVAL_SECONDS = 30 * 60;
+  const CHECKIN_ENABLED_KEY = 'oneThing:checkinsEnabled';
+  const checkinBadge = document.getElementById('checkinBadge');
+  let checkinsEnabled = false;
+  try{ checkinsEnabled = localStorage.getItem(CHECKIN_ENABLED_KEY) === 'true'; }catch(err){}
+  let lastCheckinSeconds = 0;
+
+  function updateCheckinUI(){
+    if(!checkinBadge) return;
+    checkinBadge.classList.toggle('armed', checkinsEnabled);
+    checkinBadge.textContent = checkinsEnabled ? '🔔 check-ins on' : '🔕 check-ins off';
+    checkinBadge.title = checkinsEnabled
+      ? 'reminds you every 30 min while a task is running — click to turn off'
+      : 'click to get a notification every 30 min while a task is running, even in another tab';
+  }
+
+  function resetCheckinClock(){
+    lastCheckinSeconds = seconds;
+  }
+
+  // called from renderTimer, so it uses the same real-elapsed-time value
+  // the timer display does — a laptop sleeping through a threshold just
+  // fires the notification as soon as it wakes, rather than losing it
+  function maybeFireCheckin(){
+    if(!checkinsEnabled) return;
+    if(seconds < lastCheckinSeconds + CHECKIN_INTERVAL_SECONDS) return;
+    lastCheckinSeconds = seconds;
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    if(document.visibilityState === 'visible' && document.hasFocus()) return; // you're right here, no need to nag
+    const label = taskEl.textContent.trim() || 'your task';
+    try{
+      const notif = new Notification('Still working on this?', {
+        body: label,
+        tag: 'onething-checkin',
+        renotify: true
+      });
+      notif.onclick = ()=>{ window.focus(); notif.close(); };
+    }catch(err){ /* notifications unsupported or blocked — fail silently */ }
+  }
+
+  if(checkinBadge){
+    checkinBadge.addEventListener('click', ()=>{
+      if(checkinsEnabled){
+        checkinsEnabled = false;
+        try{ localStorage.setItem(CHECKIN_ENABLED_KEY, 'false'); }catch(err){}
+        updateCheckinUI();
+        return;
+      }
+      if(!('Notification' in window)){
+        alert("This browser doesn't support notifications.");
+        return;
+      }
+      if(Notification.permission === 'denied'){
+        alert('Notifications are blocked for this site — enable them in your browser settings to use check-ins.');
+        return;
+      }
+      Notification.requestPermission().then(permission=>{
+        if(permission !== 'granted') return;
+        checkinsEnabled = true;
+        resetCheckinClock();
+        try{ localStorage.setItem(CHECKIN_ENABLED_KEY, 'true'); }catch(err){}
+        updateCheckinUI();
+      });
+    });
+  }
+  updateCheckinUI();
+
+  // real elapsed time since the run started, not a tick count —
+  // this is what makes it correct even after the tab sits backgrounded
+  function currentSeconds(){
+    if(running && sessionStartEpoch){
+      return baseSeconds + Math.floor((Date.now() - sessionStartEpoch) / 1000);
+    }
+    return seconds;
+  }
+
+  function renderTimer(){
+    seconds = currentSeconds();
+    timerEl.textContent = fmt(seconds);
+    const pct = Math.min(100, (seconds / FILL_REF) * 100);
+    inkfillEl.style.width = pct + '%';
+
+    if(alarmTargetSeconds != null && !alarmFired && seconds >= alarmTargetSeconds){
+      alarmFired = true;
+      alarmRinging = true;
+      timerEl.classList.add('alarm-ringing');
+      startRinging();
+      saveState();
+    }
+    updateAlarmDisplay();
+    maybeFireCheckin();
+  }
+
+  // primary action shifts with state: "start" is the CTA while idle,
+  // "mark done" becomes the CTA once you're actually working
+  function updateActionHierarchy(){
+    startPauseBtn.classList.toggle('btn-primary', !running);
+    doneBtn.classList.toggle('btn-primary', running);
+  }
+
+  function start(){
+    if(running) return;
+    running = true;
+    baseSeconds = seconds;
+    sessionStartEpoch = Date.now();
+    startPauseBtn.textContent = 'pause';
+    intervalId = setInterval(()=>{
+      renderTimer();
+      saveState();
+    }, 1000);
+    updateActionHierarchy();
+    saveState();
+  }
+
+  function pause(){
+    if(running) seconds = currentSeconds();
+    running = false;
+    sessionStartEpoch = null;
+    startPauseBtn.textContent = 'start';
+    clearInterval(intervalId);
+    updateActionHierarchy();
+    saveState();
+  }
+
+  // when the tab regains visibility, snap the display to the real
+  // elapsed time immediately instead of waiting for the next tick
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden && running) renderTimer();
+  });
+  window.addEventListener('focus', ()=>{
+    if(running) renderTimer();
+  });
+
+  // ---- focus sound: 5 synthesized ambient options, no files needed ----
+  const soundChips = document.querySelectorAll('.soundChip');
+  const soundVolume = document.getElementById('soundVolume');
+  const SOUND_VOLUME_KEY = 'oneThing:soundVolume';
+
+  let noiseGain = null;      // master gain — stays connected, always controls whatever's playing
+  let currentSound = null;   // null | 'brown' | 'pink' | 'ocean' | 'rain' | 'zen'
+  let activeNodes = [];      // nodes belonging to the current sound, cleaned up on switch/stop
+  let dripTimeoutId = null;
+
+  function ensureMasterGain(ctx){
+    if(!noiseGain){
+      noiseGain = ctx.createGain();
+      noiseGain.gain.value = (parseInt(soundVolume.value, 10) || 0) / 100;
+      noiseGain.connect(ctx.destination);
+    }
+    return noiseGain;
+  }
+
+  function createBrownNoiseBuffer(ctx, seconds){
+    const bufferSize = ctx.sampleRate * (seconds || 6);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let lastOut = 0;
+    for(let i = 0; i < bufferSize; i++){
+      const white = Math.random() * 2 - 1;
+      data[i] = (lastOut + (0.02 * white)) / 1.02;
+      lastOut = data[i];
+      data[i] *= 3.5; // brown noise is naturally quiet — bring it up to an audible level
+    }
+    return buffer;
+  }
+
+  function createPinkNoiseBuffer(ctx, seconds){
+    const bufferSize = ctx.sampleRate * (seconds || 6);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+    for(let i = 0; i < bufferSize; i++){
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886*b0 + white*0.0555179;
+      b1 = 0.99332*b1 + white*0.0750759;
+      b2 = 0.96900*b2 + white*0.1538520;
+      b3 = 0.86650*b3 + white*0.3104856;
+      b4 = 0.55000*b4 + white*0.5329522;
+      b5 = -0.7616*b5 - white*0.0168980;
+      const pink = b0+b1+b2+b3+b4+b5+b6+white*0.5362;
+      b6 = white*0.115926;
+      data[i] = pink * 0.11;
+    }
+    return buffer;
+  }
+
+  function updateSoundUI(){
+    soundChips.forEach(chip => chip.classList.toggle('active', chip.dataset.sound === currentSound));
+    soundVolume.classList.toggle('show', currentSound !== null);
+  }
+
+  function stopAllSound(){
+    activeNodes.forEach(n=>{
+      try{ n.stop && n.stop(); }catch(err){}
+      try{ n.disconnect && n.disconnect(); }catch(err){}
+    });
+    activeNodes = [];
+    if(dripTimeoutId){ clearTimeout(dripTimeoutId); dripTimeoutId = null; }
+    currentSound = null;
+    updateSoundUI();
+  }
+
+  function startBrown(ctx){
+    const master = ensureMasterGain(ctx);
+    const src = ctx.createBufferSource();
+    src.buffer = createBrownNoiseBuffer(ctx, 6);
+    src.loop = true;
+    src.connect(master);
+    src.start();
+    activeNodes.push(src);
+  }
+
+  function startPink(ctx){
+    const master = ensureMasterGain(ctx);
+    const src = ctx.createBufferSource();
+    src.buffer = createPinkNoiseBuffer(ctx, 6);
+    src.loop = true;
+    src.connect(master);
+    src.start();
+    activeNodes.push(src);
+  }
+
+  function startOcean(ctx){
+    const master = ensureMasterGain(ctx);
+    const src = ctx.createBufferSource();
+    src.buffer = createPinkNoiseBuffer(ctx, 6);
+    src.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 500;
+    filter.Q.value = 0.7;
+
+    const swell = ctx.createGain();
+    swell.gain.value = 0.8;
+
+    src.connect(filter).connect(swell).connect(master);
+    src.start();
+
+    // slow filter sweep = the "whoosh" of a wave rolling in and out
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.08;
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = 300;
+    lfo.connect(lfoDepth).connect(filter.frequency);
+    lfo.start();
+
+    // slow amplitude swell layered on top
+    const ampLfo = ctx.createOscillator();
+    ampLfo.frequency.value = 0.05;
+    const ampDepth = ctx.createGain();
+    ampDepth.gain.value = 0.22;
+    ampLfo.connect(ampDepth).connect(swell.gain);
+    ampLfo.start();
+
+    activeNodes.push(src, filter, swell, lfo, lfoDepth, ampLfo, ampDepth);
+  }
+
+  function playRainDrip(ctx, destination){
+    const dur = 0.06;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i = 0; i < data.length; i++){
+      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length); // quick decaying tick
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 1800 + Math.random() * 2200;
+    const g = ctx.createGain();
+    g.gain.value = 0.14 + Math.random() * 0.1;
+    src.connect(hp).connect(g).connect(destination);
+    src.start();
+    src.stop(ctx.currentTime + dur + 0.02);
+  }
+
+  function startRain(ctx){
+    const master = ensureMasterGain(ctx);
+    const src = ctx.createBufferSource();
+    src.buffer = createPinkNoiseBuffer(ctx, 6);
+    src.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 3000;
+    bp.Q.value = 0.6;
+    const hiss = ctx.createGain();
+    hiss.gain.value = 0.5;
+    src.connect(bp).connect(hiss).connect(master);
+    src.start();
+    activeNodes.push(src, bp, hiss);
+
+    (function scheduleDrip(){
+      if(currentSound !== 'rain') return;
+      playRainDrip(ctx, master);
+      dripTimeoutId = setTimeout(scheduleDrip, 60 + Math.random() * 220);
+    })();
+  }
+
+  function startZen(ctx){
+    const master = ensureMasterGain(ctx);
+    const swell = ctx.createGain();
+    swell.gain.value = 0.7;
+    swell.connect(master);
+
+    // fundamental + fifth + octave, like a sustained singing-bowl tone
+    const partials = [
+      { freq: 136.1, level: 0.19, detune: 0 },
+      { freq: 204.15, level: 0.08, detune: 2 },
+      { freq: 272.2,  level: 0.05, detune: 0 }
+    ];
+    const built = [];
+    partials.forEach(p=>{
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = p.freq + p.detune;
+      const g = ctx.createGain();
+      g.gain.value = p.level;
+      osc.connect(g).connect(swell);
+      osc.start();
+      built.push(osc, g);
+    });
+
+    // slow breathing swell so it doesn't feel like a flat drone
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.06;
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = 0.18;
+    lfo.connect(lfoDepth).connect(swell.gain);
+    lfo.start();
+
+    activeNodes.push(swell, lfo, lfoDepth, ...built);
+  }
+
+  function playSound(type){
+    stopAllSound();
+    const ctx = getAudioCtx();
+    currentSound = type;
+    if(type === 'brown') startBrown(ctx);
+    else if(type === 'pink') startPink(ctx);
+    else if(type === 'ocean') startOcean(ctx);
+    else if(type === 'rain') startRain(ctx);
+    else if(type === 'zen') startZen(ctx);
+    updateSoundUI();
+  }
+
+  soundChips.forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const type = chip.dataset.sound;
+      currentSound === type ? stopAllSound() : playSound(type);
+    });
+  });
+
+  soundVolume.addEventListener('input', ()=>{
+    const v = (parseInt(soundVolume.value, 10) || 0) / 100;
+    if(noiseGain) noiseGain.gain.value = v;
+    try{ localStorage.setItem(SOUND_VOLUME_KEY, soundVolume.value); }catch(err){}
+  });
+
+  (function restoreSoundVolume(){
+    try{
+      const saved = localStorage.getItem(SOUND_VOLUME_KEY);
+      if(saved != null) soundVolume.value = saved;
+    }catch(err){}
+  })();
+
+  // ---- work / personal mode switch ----
+  const modeSwitchEl = document.getElementById('modeSwitch');
+  const modeThumb = document.getElementById('modeThumb');
+
+  function updateModeSwitchUI(){
+    modeThumb.textContent = currentMode === 'personal' ? 'P' : 'W';
+  }
+
+  // gently points toward whichever mode you haven't touched today — disappears
+  // on its own once that mode already has something in "done today"
+  const modeNudge = document.getElementById('modeNudge');
+  const WORK_ACCENT = '#E7C765';
+  const PERSONAL_ACCENT = '#E8A9A0';
+
+  function otherModeHasDoneToday(mode){
+    try{
+      const raw = localStorage.getItem(storageKeyFor(mode));
+      if(!raw) return false;
+      const state = JSON.parse(raw);
+      return state.date === todayStr() && (state.doneItems || []).length > 0;
+    }catch(err){ return false; }
+  }
+
+  function updateModeNudge(){
+    const otherMode = currentMode === 'work' ? 'personal' : 'work';
+    if(otherModeHasDoneToday(otherMode)){
+      modeNudge.style.display = 'none';
+      return;
+    }
+    const accent = otherMode === 'personal' ? PERSONAL_ACCENT : WORK_ACCENT;
+    modeNudge.textContent = otherMode === 'personal'
+      ? '+ do one personal thing today'
+      : '+ check in on work today';
+    modeNudge.style.color = accent;
+    modeNudge.style.borderColor = accent + '66'; // ~40% opacity, matches accent
+    modeNudge.style.display = 'block';
+  }
+
+  modeNudge.addEventListener('click', ()=>{
+    switchMode(currentMode === 'work' ? 'personal' : 'work');
+  });
+
+  function switchMode(newMode){
+    if(newMode === currentMode) return;
+
+    // cleanly stop everything running in the mode we're leaving
+    pause();
+    stopAllSound();
+    clearAlarm();
+    saveState();
+
+    currentMode = newMode;
+    try{ localStorage.setItem(LAST_MODE_KEY, currentMode); }catch(err){}
+
+    // blank slate — whatever's saved for the new mode gets loaded right after
+    taskEl.textContent = '';
+    seconds = 0;
+    sessions = 0;
+    sessionsCountEl.textContent = 0;
+    document.getElementById('parkList').innerHTML = '';
+    doneList.innerHTML = '';
+    ensureDoneEmptyState();
+    clearBreakdown();
+    clearMeetingState();
+    renderTimer();
+
+    document.body.classList.toggle('mode-personal', currentMode === 'personal');
+    updateFavicon();
+    updateModeSwitchUI();
+    updateModeNudge();
+
+    loadState();
+  }
+
+  modeSwitchEl.addEventListener('click', ()=>{
+    switchMode(currentMode === 'work' ? 'personal' : 'work');
+  });
+  updateModeSwitchUI();
+  updateModeNudge();
+
+  // ---- fade to focus: a manual toggle, not tied to mouse movement ----
+  const immersiveToggle = document.getElementById('immersiveToggle');
+  const UI_HIDDEN_KEY = 'oneThing:uiHidden';
+  let uiHidden = false;
+  try{ uiHidden = localStorage.getItem(UI_HIDDEN_KEY) === 'true'; }catch(err){}
+
+  function applyUiHidden(){
+    document.body.classList.toggle('ui-hidden', uiHidden);
+    immersiveToggle.classList.toggle('active', uiHidden);
+    immersiveToggle.title = uiHidden ? 'show interface (h)' : 'hide interface while working (h)';
+  }
+
+  function toggleUiHidden(){
+    uiHidden = !uiHidden;
+    try{ localStorage.setItem(UI_HIDDEN_KEY, uiHidden); }catch(err){}
+    applyUiHidden();
+  }
+
+  immersiveToggle.addEventListener('click', toggleUiHidden);
+
+  applyUiHidden();
+
+  function ensureDoneEmptyState(){
+    if(doneList.children.length === 0){
+      const li = document.createElement('li');
+      li.className = 'donelist-empty';
+      li.style.paddingLeft = '0';
+      li.style.opacity = '0.35';
+      li.textContent = "nothing yet — that's fine";
+      doneList.appendChild(li);
+    }
+  }
+
+  function attachDoneDrag(li, text, totalSeconds){
+    li.addEventListener('dragstart', (e)=>{
+      draggedDoneLi = li;
+      li.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', text);
+      e.dataTransfer.setData('application/x-source', 'done');
+    });
+    li.addEventListener('dragend', ()=>{
+      li.classList.remove('dragging');
+      draggedDoneLi = null;
+    });
+  }
+
+  function addDoneItem(text, timeStr, totalSeconds, isMeeting){
+    const existingEmpty = doneList.querySelector('.donelist-empty');
+    if(existingEmpty) existingEmpty.remove();
+
+    const secs = totalSeconds || 0;
+    const li = document.createElement('li');
+    li.draggable = true;
+    li.dataset.seconds = secs;
+    li.dataset.meeting = isMeeting ? '1' : '0';
+    const ts = timeStr || new Date().toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
+    const label = document.createElement('span');
+    label.textContent = text;
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = ts + '  ·  ' + fmt(secs) + ' spent' + (isMeeting ? ' · meeting' : '');
+    li.appendChild(label);
+    li.appendChild(time);
+    attachDoneDrag(li, text, secs);
+    doneList.prepend(li);
+  }
+
+  function bumpSessions(taskText, totalSeconds, isMeeting){
+    sessions++;
+    sessionsCountEl.textContent = sessions;
+    sessionsEl.classList.add('pulse');
+    setTimeout(()=> sessionsEl.classList.remove('pulse'), 250);
+    if(taskText) addDoneItem(taskText, null, totalSeconds, isMeeting);
+  }
+
+  function unbumpSessions(){
+    sessions = Math.max(0, sessions - 1);
+    sessionsCountEl.textContent = sessions;
+  }
+
+  // ---- task breakdown: a lightweight checklist scoped to whatever's currently in focus ----
+  const breakdownToggle = document.getElementById('breakdownToggle');
+  const breakdownPanel = document.getElementById('breakdownPanel');
+  const breakdownInput = document.getElementById('breakdownInput');
+  const breakdownList = document.getElementById('breakdownList');
+
+  function isBreakdownOpen(){ return breakdownPanel.style.display !== 'none'; }
+
+  function openBreakdown(focusInput){
+    breakdownPanel.style.display = 'flex';
+    breakdownToggle.textContent = '– hide breakdown';
+    if(focusInput) breakdownInput.focus();
+  }
+  function closeBreakdownPanel(){
+    breakdownPanel.style.display = 'none';
+    breakdownToggle.textContent = '+ break it down';
+  }
+
+  breakdownToggle.addEventListener('click', ()=>{
+    isBreakdownOpen() ? closeBreakdownPanel() : openBreakdown(true);
+  });
+
+  function makeStep(text, checked){
+    const li = document.createElement('li');
+    if(checked) li.classList.add('checked');
+    const label = document.createElement('span');
+    label.textContent = text;
+    const remove = document.createElement('span');
+    remove.className = 'stepRemove';
+    remove.textContent = '×';
+    li.appendChild(label);
+    li.appendChild(remove);
+
+    li.addEventListener('click', (e)=>{
+      if(e.target === remove){
+        li.remove();
+        saveState();
+        return;
+      }
+      li.classList.toggle('checked');
+      saveState();
+    });
+
+    return li;
+  }
+
+  breakdownInput.addEventListener('keydown', (e)=>{
+    e.stopPropagation(); // don't let global space/t shortcuts fire while typing a step
+    if(e.key === 'Enter' && breakdownInput.value.trim().length > 0){
+      breakdownList.appendChild(makeStep(breakdownInput.value.trim(), false));
+      breakdownInput.value = '';
+      saveState();
+    }
+  });
+
+  function clearBreakdown(){
+    breakdownList.innerHTML = '';
+    closeBreakdownPanel();
+  }
+
+  function collectBreakdownItems(){
+    return Array.from(breakdownList.querySelectorAll('li')).map(li => ({
+      text: li.querySelector('span')?.textContent || '',
+      checked: li.classList.contains('checked')
+    }));
+  }
+
+  startPauseBtn.addEventListener('click', ()=>{
+    running ? pause() : start();
+  });
+
+  document.getElementById('reset').addEventListener('click', ()=>{
+    pause();
+    seconds = 0;
+    clearAlarm();
+    resetCheckinClock();
+    renderTimer();
+    saveState();
+  });
+
+  document.getElementById('newDay').addEventListener('click', ()=>{
+    const hasContent = taskEl.textContent.trim().length > 0
+      || document.querySelectorAll('#parkList li').length > 0
+      || doneList.querySelectorAll('li:not(.donelist-empty)').length > 0
+      || sessions > 0;
+
+    if(hasContent && !confirm('Clear today\'s task, both lists, and the done count? This can\'t be undone.')){
+      return;
+    }
+
+    pause();
+    seconds = 0;
+    sessions = 0;
+    sessionsCountEl.textContent = 0;
+    taskEl.textContent = '';
+    document.getElementById('parkList').innerHTML = '';
+    doneList.innerHTML = '';
+    ensureDoneEmptyState();
+    clearAlarm();
+    resetCheckinClock();
+    clearBreakdown();
+    clearMeetingState();
+    renderTimer();
+    saveState();
+    taskEl.focus();
+  });
+
+  document.getElementById('done').addEventListener('click', ()=>{
+    const text = taskEl.textContent.trim();
+    if(text.length === 0) return;
+    bumpSessions(text, currentSeconds(), taskIsMeeting);
+    pause();
+    seconds = 0;
+    clearAlarm();
+    resetCheckinClock();
+    clearBreakdown();
+    clearMeetingState();
+    renderTimer();
+    taskEl.textContent = '';
+    taskEl.focus();
+    saveState();
+  });
+
+  taskEl.addEventListener('input', ()=>{
+    if(taskEl.textContent.trim().length > 0 && !running && seconds === 0){
+      start();
+    }
+    if(taskEl.textContent.trim().length === 0){
+      pause();
+    }
+    saveState();
+  });
+
+  // global keyboard shortcuts — must ignore ANY text-entry field, not just the task field
+  function isTyping(el){
+    if(!el) return false;
+    if(el === taskEl) return true;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+  }
+
+  document.addEventListener('keydown', (e)=>{
+    if(typeof meetingOpen !== 'undefined' && meetingOpen) return;
+    const typing = isTyping(document.activeElement);
+    if(e.key.toLowerCase() === 't' && !typing){
+      e.preventDefault();
+      taskEl.focus();
+    }
+    if(e.key === ' ' && !typing){
+      e.preventDefault();
+      running ? pause() : start();
+    }
+    if(e.key.toLowerCase() === 'h' && !typing){
+      e.preventDefault();
+      toggleUiHidden();
+    }
+    if(e.key.toLowerCase() === 'd' && !typing){
+      e.preventDefault();
+      doneBtn.click();
+    }
+    if(e.key === 'Tab' && !typing){
+      e.preventDefault();
+      switchMode(currentMode === 'work' ? 'personal' : 'work');
+    }
+  });
+
+  // ---- persistence ----
+  let saveFlashTimeout = null;
+  function flashSaved(){
+    saveBadge.classList.add('show');
+    clearTimeout(saveFlashTimeout);
+    saveFlashTimeout = setTimeout(()=> saveBadge.classList.remove('show'), 900);
+  }
+
+  function collectParkItems(){
+    return Array.from(document.querySelectorAll('#parkList li')).map(li => ({
+      text: li.querySelector('span')?.textContent || li.textContent,
+      seconds: parseInt(li.dataset.seconds, 10) || 0,
+      isMeeting: li.dataset.meeting === '1',
+      notes: li.dataset.notes || ''
+    }));
+  }
+  function collectDoneItems(){
+    return Array.from(doneList.querySelectorAll('li:not(.donelist-empty)')).map(li => ({
+      text: li.querySelector('span')?.textContent || li.textContent,
+      time: (li.querySelector('.time')?.textContent || '').split('  ·  ')[0],
+      seconds: parseInt(li.dataset.seconds, 10) || 0,
+      isMeeting: li.dataset.meeting === '1'
+    })).reverse(); // stored oldest-first, list renders newest-first via prepend on load
+  }
+
+  function saveState(){
+    try{
+      const state = {
+        date: todayStr(),
+        task: taskEl.textContent,
+        seconds: seconds,
+        sessions: sessions,
+        parkItems: collectParkItems(),
+        doneItems: collectDoneItems(),
+        alarmTargetSeconds: alarmTargetSeconds,
+        alarmFired: alarmFired,
+        breakdownItems: collectBreakdownItems(),
+        breakdownOpen: isBreakdownOpen(),
+        isMeeting: taskIsMeeting,
+        meetingNotes: meetingNotesArea ? meetingNotesArea.value : ''
+      };
+      localStorage.setItem(storageKeyFor(currentMode), JSON.stringify(state));
+      flashSaved();
+    }catch(err){
+      console.error('Could not save state:', err);
+    }
+  }
+
+  function loadState(){
+    let raw;
+    try{
+      raw = localStorage.getItem(storageKeyFor(currentMode));
+    }catch(err){
+      console.error('Could not read saved state:', err);
+      return;
+    }
+    if(!raw) return;
+
+    let state;
+    try{ state = JSON.parse(raw); } catch(err){ return; }
+    if(!state || state.date !== todayStr()) return; // new day, start fresh
+
+    if(state.task) taskEl.textContent = state.task;
+    seconds = state.seconds || 0;
+    sessions = state.sessions || 0;
+    sessionsCountEl.textContent = sessions;
+    renderTimer();
+
+    (state.parkItems || []).forEach(item => {
+      if(typeof item === 'string'){
+        parkList.appendChild(makeItem(item, 0)); // old format, before per-item time tracking
+      } else {
+        parkList.appendChild(makeItem(item.text, item.seconds, item.isMeeting, item.notes));
+      }
+    });
+
+    if((state.doneItems || []).length){
+      const empty = doneList.querySelector('.donelist-empty');
+      if(empty) empty.remove();
+      state.doneItems.forEach(item => addDoneItem(item.text, item.time, item.seconds, item.isMeeting));
+    }
+
+    // restore an armed-but-not-yet-fired alarm; drop one that already rang
+    if(state.alarmTargetSeconds != null && !state.alarmFired){
+      alarmTargetSeconds = state.alarmTargetSeconds;
+      alarmFired = false;
+    }
+    updateAlarmDisplay();
+
+    if((state.breakdownItems || []).length){
+      state.breakdownItems.forEach(item => breakdownList.appendChild(makeStep(item.text, item.checked)));
+      openBreakdown(false);
+    } else if(state.breakdownOpen){
+      openBreakdown(false);
+    }
+
+    taskIsMeeting = !!state.isMeeting;
+    if(meetingNotesArea) meetingNotesArea.value = state.meetingNotes || '';
+    updateMeetingUI();
+  }
+
+  if(meetingNotesArea){
+    meetingNotesArea.addEventListener('input', saveState);
+  }
+  meetingBtn.addEventListener('click', ()=> openMeetingRitual());
+
+  updateActionHierarchy();
+  renderTimer();
+</script>
+
+<script>
+  // parking lot: quiet capture list
+  const parkInput = document.getElementById('parkInput');
+  const parkList = document.getElementById('parkList');
+  let draggedLi = null;
+
+  function makeItem(text, secondsSpent, isMeeting, notes){
+    const secs = secondsSpent || 0;
+    const li = document.createElement('li');
+    li.draggable = true;
+    li.dataset.seconds = secs;
+    li.dataset.meeting = isMeeting ? '1' : '0';
+    li.dataset.notes = notes || '';
+
+    const label = document.createElement('span');
+    label.textContent = text;
+    li.appendChild(label);
+
+    if(secs > 0 || isMeeting){
+      const time = document.createElement('span');
+      time.className = 'time';
+      const bits = [];
+      if(secs > 0) bits.push(fmt(secs) + ' so far');
+      if(isMeeting) bits.push('meeting');
+      time.textContent = bits.join(' · ');
+      li.appendChild(time);
+    }
+
+    li.addEventListener('click', (e)=>{
+      if(e.target.classList.contains('time')) return;
+      li.classList.add('done');
+      setTimeout(()=>{ li.remove(); saveState(); }, 500);
+    });
+
+    li.addEventListener('dragstart', (e)=>{
+      draggedLi = li;
+      li.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', text);
+      e.dataTransfer.setData('application/x-source', 'park');
+    });
+    li.addEventListener('dragend', ()=>{
+      li.classList.remove('dragging');
+      draggedLi = null;
+    });
+
+    return li;
+  }
+
+  parkInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && parkInput.value.trim().length > 0){
+      parkList.appendChild(makeItem(parkInput.value.trim()));
+      parkInput.value = '';
+      saveState();
+    }
+  });
+
+  // paste a multi-line block (e.g. copied from a task tracker) and each
+  // line becomes its own item — single-line pastes just fill the field as usual
+  parkInput.addEventListener('paste', (e)=>{
+    const clipboard = e.clipboardData || window.clipboardData;
+    if(!clipboard) return;
+    const text = clipboard.getData('text');
+    if(!text) return;
+
+    const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if(lines.length > 1){
+      e.preventDefault();
+      lines.forEach(line => parkList.appendChild(makeItem(line)));
+      parkInput.value = '';
+      saveState();
+    }
+  });
+
+  // drop target: the task headline itself
+  taskEl.addEventListener('dragover', (e)=>{
+    e.preventDefault();
+    taskEl.classList.add('drop-target');
+  });
+  taskEl.addEventListener('dragleave', ()=>{
+    taskEl.classList.remove('drop-target');
+  });
+  taskEl.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    taskEl.classList.remove('drop-target');
+    const text = e.dataTransfer.getData('text/plain');
+    const source = e.dataTransfer.getData('application/x-source');
+    if(!text) return;
+
+    const prevText = taskEl.textContent.trim();
+    const prevIsMeeting = taskIsMeeting;
+    const prevNotes = meetingNotesArea ? meetingNotesArea.value : '';
+    let resumeSeconds = 0;
+    let resumeIsMeeting = false;
+    let resumeNotes = '';
+
+    if(source === 'done'){
+      resumeSeconds = draggedDoneLi ? (parseInt(draggedDoneLi.dataset.seconds, 10) || 0) : 0;
+      resumeIsMeeting = draggedDoneLi ? draggedDoneLi.dataset.meeting === '1' : false;
+      unbumpSessions();
+      if(draggedDoneLi) draggedDoneLi.remove();
+      ensureDoneEmptyState();
+      if(prevText.length > 0){
+        parkList.appendChild(makeItem(prevText, currentSeconds(), prevIsMeeting, prevNotes));
+      }
+    } else {
+      resumeSeconds = draggedLi ? (parseInt(draggedLi.dataset.seconds, 10) || 0) : 0;
+      resumeIsMeeting = draggedLi ? draggedLi.dataset.meeting === '1' : false;
+      resumeNotes = draggedLi ? (draggedLi.dataset.notes || '') : '';
+      if(prevText.length > 0){
+        bumpSessions(prevText, currentSeconds(), prevIsMeeting);
+      }
+      if(draggedLi) draggedLi.remove();
+    }
+
+    taskEl.textContent = text;
+    pause();
+    seconds = resumeSeconds;
+    taskIsMeeting = resumeIsMeeting;
+    if(meetingNotesArea) meetingNotesArea.value = resumeNotes;
+    updateMeetingUI();
+    clearAlarm();
+    clearBreakdown();
+    renderTimer();
+    start();
+    saveState();
+  });
+
+  // drag the "focus on" label itself to send the current task to a list —
+  // parking it (left) keeps its time so it resumes correctly later;
+  // dropping it on "done today" (right) finishes it, same as the button
+  const eyebrow = document.getElementById('eyebrow');
+  const parkPanel = document.querySelector('.sidepanel.parkinglot');
+  const donePanel = document.querySelector('.sidepanel.donelist');
+
+  eyebrow.addEventListener('dragstart', (e)=>{
+    const text = taskEl.textContent.trim();
+    if(!text){ e.preventDefault(); return; }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', text);
+    e.dataTransfer.setData('application/x-source', 'currentTask');
+    e.dataTransfer.setData('application/x-seconds', String(currentSeconds()));
+    eyebrow.classList.add('dragging');
+  });
+  eyebrow.addEventListener('dragend', ()=>{
+    eyebrow.classList.remove('dragging');
+  });
+
+  function clearCurrentTask(){
+    taskEl.textContent = '';
+    pause();
+    seconds = 0;
+    clearAlarm();
+    clearBreakdown();
+    clearMeetingState();
+    renderTimer();
+  }
+
+  [parkPanel, donePanel].forEach(panel=>{
+    panel.addEventListener('dragover', (e)=>{
+      if(!e.dataTransfer.types.includes('application/x-source')) return;
+      e.preventDefault();
+      panel.classList.add('drop-target');
+    });
+    panel.addEventListener('dragleave', ()=>{
+      panel.classList.remove('drop-target');
+    });
+  });
+
+  parkPanel.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    parkPanel.classList.remove('drop-target');
+    if(e.dataTransfer.getData('application/x-source') !== 'currentTask') return;
+    const text = e.dataTransfer.getData('text/plain');
+    const secs = parseInt(e.dataTransfer.getData('application/x-seconds'), 10) || 0;
+    if(!text) return;
+
+    parkList.appendChild(makeItem(text, secs, taskIsMeeting, meetingNotesArea ? meetingNotesArea.value : ''));
+    clearCurrentTask();
+    saveState();
+  });
+
+  donePanel.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    donePanel.classList.remove('drop-target');
+    if(e.dataTransfer.getData('application/x-source') !== 'currentTask') return;
+    const text = e.dataTransfer.getData('text/plain');
+    const secs = parseInt(e.dataTransfer.getData('application/x-seconds'), 10) || 0;
+    if(!text) return;
+
+    bumpSessions(text, secs, taskIsMeeting);
+    clearCurrentTask();
+    saveState();
+  });
+
+  // ---- meeting prep ritual ----
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  const MEETING_STEPS = [
+    { key:'title', label:"What's this meeting called?", placeholder:'e.g. Q3 planning sync', type:'text' },
+    { key:'leader', label:'Who is leading this?', placeholder:'name', type:'text' },
+    { key:'wants', label:'What do they want from this?', placeholder:'their goal, as best you can guess', type:'text' },
+    { key:'purpose', label:'Why are we sitting?', placeholder:'the real reason this meeting exists', type:'text' },
+    { key:'questions', label:'Questions I want answered', placeholder:'one per line', type:'textarea' },
+    { key:'outcome', label:'Where do I want this to land?', placeholder:'what a good outcome looks like', type:'text' }
+  ];
+
+  const meetingLayer = document.getElementById('meetingLayer');
+  let meetingStep = 0;
+  let meetingAnswers = {};
+  let meetingOpen = false;
+  let meetingEditingFromReview = false;
+  let meetingPreState = null; // whatever was in focus before the ritual opened, so cancel can restore it
+
+  function openMeetingRitual(){
+    meetingStep = 0;
+    meetingAnswers = {};
+    meetingEditingFromReview = false;
+    meetingOpen = true;
+    document.body.style.overflow = 'hidden';
+
+    // park whatever's active right now, and start counting immediately for the meeting —
+    // the ritual itself is part of the meeting's time, not a pause before it
+    const prevText = taskEl.textContent.trim();
+    meetingPreState = prevText.length > 0 ? {
+      text: prevText,
+      seconds: currentSeconds(),
+      isMeeting: taskIsMeeting,
+      notes: meetingNotesArea ? meetingNotesArea.value : ''
+    } : null;
+
+    if(meetingPreState){
+      parkList.appendChild(makeItem(meetingPreState.text, meetingPreState.seconds, meetingPreState.isMeeting, meetingPreState.notes));
+    }
+
+    pause();
+    clearAlarm();
+    clearBreakdown();
+    seconds = 0;
+    taskEl.textContent = 'Meeting prep…';
+    taskIsMeeting = true;
+    if(meetingNotesArea) meetingNotesArea.value = '';
+    updateMeetingUI();
+    renderTimer();
+    start();
+    saveState();
+
+    drawMeetingStep();
+  }
+
+  function closeMeetingRitual(){
+    meetingOpen = false;
+    meetingEditingFromReview = false;
+    meetingLayer.innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  function cancelMeetingRitual(){
+    // undo: stop the provisional meeting timer and put back whatever was there before
+    pause();
+    if(meetingPreState){
+      const lastLi = parkList.lastElementChild;
+      if(lastLi) lastLi.remove(); // remove the item we just parked to make room
+      taskEl.textContent = meetingPreState.text;
+      seconds = meetingPreState.seconds;
+      taskIsMeeting = meetingPreState.isMeeting;
+      if(meetingNotesArea) meetingNotesArea.value = meetingPreState.notes;
+      updateMeetingUI();
+      renderTimer();
+      start();
+    } else {
+      taskEl.textContent = '';
+      seconds = 0;
+      clearMeetingState();
+      renderTimer();
+    }
+    meetingPreState = null;
+    closeMeetingRitual();
+    saveState();
+  }
+
+  function commitMeetingField(){
+    const step = MEETING_STEPS[meetingStep];
+    const field = document.getElementById('meetingField');
+    if(field && step) meetingAnswers[step.key] = field.value.trim();
+  }
+
+  function nextMeetingStep(){
+    if(meetingEditingFromReview){
+      meetingEditingFromReview = false;
+      meetingStep = MEETING_STEPS.length; // jump straight back to the review screen
+    } else {
+      meetingStep++;
+    }
+    drawMeetingStep();
+  }
+
+  function drawMeetingStep(){
+    const total = MEETING_STEPS.length;
+
+    if(meetingStep < total){
+      const step = MEETING_STEPS[meetingStep];
+      const isReviewEdit = meetingEditingFromReview;
+      const dots = MEETING_STEPS.map((_, i) =>
+        `<i class="${i < meetingStep ? 'on' : i === meetingStep ? 'now' : ''}"></i>`).join('');
+      const val = esc(meetingAnswers[step.key] || '');
+      const fieldHtml = step.type === 'textarea'
+        ? `<textarea class="meetingField" id="meetingField" placeholder="${esc(step.placeholder)}">${val}</textarea>`
+        : `<input class="meetingField" id="meetingField" type="text" placeholder="${esc(step.placeholder)}" value="${val}" />`;
+
+      meetingLayer.innerHTML = `<div class="meetingVeil" id="meetingVeilEl">
+        <div class="meetingCard">
+          ${isReviewEdit ? '' : `<div class="meetingDots">${dots}</div>`}
+          <div class="meetingReminder">★ stay technical · stay neutral ★</div>
+          <div class="meetingLabel">${esc(step.label)}</div>
+          ${fieldHtml}
+          <div class="meetingActs">
+            ${(!isReviewEdit && meetingStep > 0) ? `<button class="btn" id="meetingBack">back</button>` : ''}
+            <span style="flex:1"></span>
+            <button class="btn" id="meetingSkip">${isReviewEdit ? 'cancel' : 'skip'}</button>
+            <button class="btn btn-hot" id="meetingNext">${isReviewEdit ? 'save' : (meetingStep === total - 1 ? 'review' : 'next')}</button>
+          </div>
+          <div class="meetingEsc">esc to cancel the whole meeting</div>
+        </div>
+      </div>`;
+
+      const field = document.getElementById('meetingField');
+      field.focus();
+      field.addEventListener('keydown', e=>{
+        e.stopPropagation();
+        if(e.key === 'Enter' && (step.type !== 'textarea' || !e.shiftKey)){
+          e.preventDefault();
+          commitMeetingField();
+          nextMeetingStep();
+        }
+      });
+      document.getElementById('meetingNext').onclick = ()=>{ commitMeetingField(); nextMeetingStep(); };
+      document.getElementById('meetingSkip').onclick = ()=> nextMeetingStep();
+      const back = document.getElementById('meetingBack');
+      if(back) back.onclick = ()=>{ commitMeetingField(); meetingStep--; drawMeetingStep(); };
+
+    } else {
+      // review screen before committing — click any line to jump back and edit just that field
+      const rows = [
+        ['leader', 'Leads', meetingAnswers.leader ? esc(meetingAnswers.leader) : ''],
+        ['wants', 'Wants', meetingAnswers.wants ? esc(meetingAnswers.wants) : ''],
+        ['purpose', 'Why', meetingAnswers.purpose ? esc(meetingAnswers.purpose) : ''],
+        ['questions', 'Questions', (meetingAnswers.questions || '').split('\n').map(l=>l.trim()).filter(Boolean).map(esc).join('<br>')],
+        ['outcome', 'Land at', meetingAnswers.outcome ? esc(meetingAnswers.outcome) : '']
+      ].filter(([, , v]) => v && v.length > 0);
+
+      meetingLayer.innerHTML = `<div class="meetingVeil" id="meetingVeilEl">
+        <div class="meetingCard meetingSummary">
+          <div class="meetingReminder">★ stay technical · stay neutral ★</div>
+          <div class="meetingLabel meetingEditable" id="meetingTitleRow" title="click to edit">${esc(meetingAnswers.title || 'Untitled meeting')}</div>
+          <div class="meetingSummaryList">
+            ${rows.map(([key, label, val]) => `<div class="meetingSummaryRow" data-key="${key}" title="click to edit"><b>${esc(label)}</b>${val}</div>`).join('')}
+            ${!rows.length ? '<div style="opacity:.5">Nothing filled in — that\'s alright, you can still begin.</div>' : ''}
+          </div>
+          <div class="meetingActs">
+            <button class="btn" id="meetingBack">back</button>
+            <span style="flex:1"></span>
+            <button class="btn btn-hot" id="meetingBegin">begin meeting</button>
+          </div>
+          <div class="meetingEsc">esc to cancel the whole meeting</div>
+        </div>
+      </div>`;
+
+      document.getElementById('meetingBack').onclick = ()=>{ meetingStep = MEETING_STEPS.length - 1; drawMeetingStep(); };
+      document.getElementById('meetingBegin').onclick = beginMeeting;
+      document.getElementById('meetingTitleRow').onclick = ()=>{
+        meetingEditingFromReview = true; meetingStep = 0; drawMeetingStep();
+      };
+      meetingLayer.querySelectorAll('.meetingSummaryRow').forEach(row=>{
+        row.addEventListener('click', ()=>{
+          meetingEditingFromReview = true;
+          meetingStep = MEETING_STEPS.findIndex(s => s.key === row.dataset.key);
+          drawMeetingStep();
+        });
+      });
+    }
+
+    const veil = document.getElementById('meetingVeilEl');
+    if(veil) veil.addEventListener('click', e=>{ if(e.target === veil) cancelMeetingRitual(); });
+  }
+
+  function beginMeeting(){
+    // the timer's already been running since the ritual opened, and the previous
+    // task (if any) was already parked then — this just commits the final details
+    taskEl.textContent = meetingAnswers.title || 'Meeting';
+    taskIsMeeting = true;
+    updateMeetingUI();
+
+    // prep answers become reference steps in the breakdown panel
+    breakdownList.innerHTML = '';
+    if(meetingAnswers.leader) breakdownList.appendChild(makeStep('Leads: ' + meetingAnswers.leader, false));
+    if(meetingAnswers.wants) breakdownList.appendChild(makeStep('Wants: ' + meetingAnswers.wants, false));
+    if(meetingAnswers.purpose) breakdownList.appendChild(makeStep('Why: ' + meetingAnswers.purpose, false));
+    (meetingAnswers.questions || '').split('\n').map(s=>s.trim()).filter(Boolean).forEach(q=>{
+      breakdownList.appendChild(makeStep('Q: ' + q, false));
+    });
+    if(meetingAnswers.outcome) breakdownList.appendChild(makeStep('Land at: ' + meetingAnswers.outcome, false));
+    if(breakdownList.children.length) openBreakdown(false);
+
+    meetingPreState = null;
+    closeMeetingRitual();
+    saveState();
+  }
+
+  document.addEventListener('keydown', e=>{
+    if(!meetingOpen || e.key !== 'Escape') return;
+    if(meetingEditingFromReview){
+      meetingEditingFromReview = false;
+      meetingStep = MEETING_STEPS.length;
+      drawMeetingStep();
+    } else {
+      cancelMeetingRitual();
+    }
+  });
+
+  // now that makeItem/parkList exist, restore any saved state
+  loadState();
+</script>
+
+</body>
+</html>
