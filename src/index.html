@@ -2024,14 +2024,22 @@
   donePanel.addEventListener('drop', (e)=>{
     e.preventDefault();
     donePanel.classList.remove('drop-target');
-    if(e.dataTransfer.getData('application/x-source') !== 'currentTask') return;
+    const source = e.dataTransfer.getData('application/x-source');
     const text = e.dataTransfer.getData('text/plain');
-    const secs = parseInt(e.dataTransfer.getData('application/x-seconds'), 10) || 0;
     if(!text) return;
 
-    bumpSessions(text, secs, taskIsMeeting);
-    clearCurrentTask();
-    saveState();
+    if(source === 'currentTask'){
+      const secs = parseInt(e.dataTransfer.getData('application/x-seconds'), 10) || 0;
+      bumpSessions(text, secs, taskIsMeeting);
+      clearCurrentTask();
+      saveState();
+    } else if(source === 'park' && draggedLi){
+      const secs = parseInt(draggedLi.dataset.seconds, 10) || 0;
+      const isMeeting = draggedLi.dataset.meeting === '1';
+      bumpSessions(text, secs, isMeeting);
+      draggedLi.remove();
+      saveState();
+    }
   });
 
   // ---- meeting prep ritual ----
