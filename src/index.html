@@ -1866,7 +1866,11 @@
     li.addEventListener('click', (e)=>{
       if(e.target.classList.contains('time')) return;
       li.classList.add('done');
-      setTimeout(()=>{ li.remove(); saveState(); }, 500);
+      setTimeout(()=>{
+        bumpSessions(text, secs, isMeeting); // lands in "done today" — drag it back onto "focus on" to undo
+        li.remove();
+        saveState();
+      }, 500);
     });
 
     li.addEventListener('dragstart', (e)=>{
