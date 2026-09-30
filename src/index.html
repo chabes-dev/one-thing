@@ -718,6 +718,31 @@
     margin-top:2px;
   }
 
+  /* recently-deleted tray — bottom center, opened from the trash badge */
+  .trashpanel{
+    top:auto; bottom:8vh; left:50%;
+    transform:translateX(-50%);
+    width:260px; max-height:26vh;
+    background:rgba(0,0,0,0.28);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+    box-shadow:0 20px 50px -20px rgba(0,0,0,0.6);
+    z-index:120;
+  }
+  .trashpanel .sidepanel-list li{
+    opacity:0.65;
+    cursor:pointer;
+    transition:opacity 0.15s, background 0.15s;
+  }
+  .trashpanel .sidepanel-list li:hover{ opacity:1; background:rgba(231,199,101,0.08); }
+  .trashpanel .sidepanel-list li::before{
+    content:'\21B6';
+    position:absolute; left:2px; top:3px;
+    color:var(--gold-dim);
+    font-size:11px;
+  }
+
   /* done list — right */
   .donelist{ right:3.5vw; }
   .donelist .sidepanel-list li{
@@ -799,6 +824,7 @@
       <span class="alarmBadge" id="alarmDisplay" title="click to set a countdown alarm">+ alarm</span>
       <input class="alarmInput" id="alarmInput" type="number" min="1" max="240" placeholder="minutes" style="display:none;">
       <span class="alarmBadge" id="checkinBadge" title="click to get a notification every 30 min while a task is running, even in another tab">🔕 check-ins off</span>
+      <span class="alarmBadge" id="trashBadge" title="view recently deleted items">🗑 trash</span>
       <div class="sessions" id="sessions"><span class="count">0</span> done today</div>
     </div>
 
@@ -837,6 +863,12 @@
       <li class="donelist-empty" style="padding-left:0; opacity:0.35;">nothing yet — that's fine</li>
     </ul>
     <div class="parkinglot-hint">drag here when done · drag back to resume</div>
+  </div>
+
+  <div class="sidepanel trashpanel fade-ui" id="trashPanel" style="display:none;">
+    <div class="sidepanel-title">recently deleted</div>
+    <ul class="sidepanel-list" id="trashList"></ul>
+    <div class="parkinglot-hint">click an item to restore it</div>
   </div>
 
   <div id="meetingLayer"></div>
@@ -1481,6 +1513,7 @@
     ensureDoneEmptyState();
     clearBreakdown();
     clearMeetingState();
+    if(typeof trashItems !== 'undefined'){ trashItems = []; renderTrash(); }
     renderTimer();
 
     document.body.classList.toggle('mode-personal', currentMode === 'personal');
@@ -1571,7 +1604,7 @@
       unbumpSessions();
       li.remove();
       ensureDoneEmptyState();
-      saveState();
+      addToTrash({text, seconds: secs, isMeeting, notes: '', source: 'done'});
     });
     li.appendChild(remove);
 
@@ -1690,6 +1723,7 @@
     document.getElementById('parkList').innerHTML = '';
     doneList.innerHTML = '';
     ensureDoneEmptyState();
+    if(typeof trashItems !== 'undefined'){ trashItems = []; renderTrash(); }
     clearAlarm();
     resetCheckinClock();
     clearBreakdown();
@@ -1797,7 +1831,8 @@
         breakdownItems: collectBreakdownItems(),
         breakdownOpen: isBreakdownOpen(),
         isMeeting: taskIsMeeting,
-        meetingNotes: meetingNotesArea ? meetingNotesArea.value : ''
+        meetingNotes: meetingNotesArea ? meetingNotesArea.value : '',
+        trashItems: typeof trashItems !== 'undefined' ? trashItems : []
       };
       localStorage.setItem(storageKeyFor(currentMode), JSON.stringify(state));
       flashSaved();
@@ -1838,6 +1873,11 @@
       const empty = doneList.querySelector('.donelist-empty');
       if(empty) empty.remove();
       state.doneItems.forEach(item => addDoneItem(item.text, item.time, item.seconds, item.isMeeting));
+    }
+
+    if(typeof trashItems !== 'undefined'){
+      trashItems = state.trashItems || [];
+      renderTrash();
     }
 
     // restore an armed-but-not-yet-fired alarm; drop one that already rang
@@ -1905,7 +1945,7 @@
     li.addEventListener('click', (e)=>{
       if(remove.contains(e.target)){
         li.remove();
-        saveState();
+        addToTrash({text, seconds: secs, isMeeting, notes: notes || '', source: 'park'});
         return;
       }
       if(e.target.classList.contains('time')) return;
@@ -1931,6 +1971,71 @@
 
     return li;
   }
+
+  // ---- trash: a short-lived recovery tray for anything deleted from either list ----
+  const trashBadge = document.getElementById('trashBadge');
+  const trashPanel = document.getElementById('trashPanel');
+  const trashList = document.getElementById('trashList');
+  const TRASH_LIMIT = 20;
+  let trashItems = [];
+
+  function updateTrashBadge(){
+    if(!trashBadge) return;
+    trashBadge.textContent = trashItems.length ? ('🗑 trash (' + trashItems.length + ')') : '🗑 trash';
+  }
+
+  function renderTrash(){
+    if(!trashList) return;
+    trashList.innerHTML = '';
+    if(!trashItems.length){
+      const li = document.createElement('li');
+      li.className = 'donelist-empty';
+      li.style.paddingLeft = '0';
+      li.style.opacity = '0.35';
+      li.textContent = 'nothing deleted yet';
+      trashList.appendChild(li);
+    } else {
+      trashItems.forEach((item, idx)=>{
+        const li = document.createElement('li');
+        li.textContent = item.text;
+        li.title = 'click to restore';
+        li.addEventListener('click', ()=> restoreFromTrash(idx));
+        trashList.appendChild(li);
+      });
+    }
+    updateTrashBadge();
+  }
+
+  function addToTrash(item){
+    trashItems.unshift(item);
+    if(trashItems.length > TRASH_LIMIT) trashItems.length = TRASH_LIMIT;
+    renderTrash();
+    saveState();
+  }
+
+  function restoreFromTrash(idx){
+    const item = trashItems[idx];
+    if(!item) return;
+    trashItems.splice(idx, 1);
+    if(item.source === 'done'){
+      sessions++;
+      sessionsCountEl.textContent = sessions;
+      addDoneItem(item.text, null, item.seconds, item.isMeeting);
+    } else {
+      parkList.appendChild(makeItem(item.text, item.seconds, item.isMeeting, item.notes));
+    }
+    renderTrash();
+    saveState();
+  }
+
+  if(trashBadge){
+    trashBadge.addEventListener('click', ()=>{
+      const showing = trashPanel.style.display !== 'none';
+      trashPanel.style.display = showing ? 'none' : 'flex';
+      if(!showing) renderTrash();
+    });
+  }
+  renderTrash();
 
   parkInput.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter' && parkInput.value.trim().length > 0){
