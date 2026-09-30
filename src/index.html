@@ -2011,14 +2011,24 @@
   parkPanel.addEventListener('drop', (e)=>{
     e.preventDefault();
     parkPanel.classList.remove('drop-target');
-    if(e.dataTransfer.getData('application/x-source') !== 'currentTask') return;
+    const source = e.dataTransfer.getData('application/x-source');
     const text = e.dataTransfer.getData('text/plain');
-    const secs = parseInt(e.dataTransfer.getData('application/x-seconds'), 10) || 0;
     if(!text) return;
 
-    parkList.appendChild(makeItem(text, secs, taskIsMeeting, meetingNotesArea ? meetingNotesArea.value : ''));
-    clearCurrentTask();
-    saveState();
+    if(source === 'currentTask'){
+      const secs = parseInt(e.dataTransfer.getData('application/x-seconds'), 10) || 0;
+      parkList.appendChild(makeItem(text, secs, taskIsMeeting, meetingNotesArea ? meetingNotesArea.value : ''));
+      clearCurrentTask();
+      saveState();
+    } else if(source === 'done' && draggedDoneLi){
+      const secs = parseInt(draggedDoneLi.dataset.seconds, 10) || 0;
+      const isMeeting = draggedDoneLi.dataset.meeting === '1';
+      unbumpSessions();
+      parkList.appendChild(makeItem(text, secs, isMeeting));
+      draggedDoneLi.remove();
+      ensureDoneEmptyState();
+      saveState();
+    }
   });
 
   donePanel.addEventListener('drop', (e)=>{
