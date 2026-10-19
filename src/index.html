@@ -1759,6 +1759,16 @@
     saveState();
   });
 
+  // Enter commits the task instead of opening a new line — the timer's
+  // already running by now (via the input listener above), so this just
+  // takes focus away and tucks the controls out of sight to start working
+  taskEl.addEventListener('keydown', (e)=>{
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    taskEl.blur();
+    if(!uiHidden) toggleUiHidden();
+  });
+
   // global keyboard shortcuts — must ignore ANY text-entry field, not just the task field
   function isTyping(el){
     if(!el) return false;
