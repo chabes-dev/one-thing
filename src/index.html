@@ -459,6 +459,32 @@
   }
   .alarmInput::placeholder{ color:var(--gold-dim); opacity:0.7; font-weight:500; }
 
+  .alarmPresets{
+    display:flex; align-items:center; gap:6px;
+  }
+  .presetChip{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--cream);
+    cursor:pointer;
+    padding:8px 13px;
+    border-radius:999px;
+    opacity:0.7;
+    transition:opacity 0.15s, border-color 0.15s, color 0.15s;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:13px;
+  }
+  .presetChip:hover{ opacity:1; border-color:var(--gold); color:var(--gold); }
+
+  @keyframes pipShake{
+    0%, 100%{ transform:translateX(0); }
+    20%{ transform:translateX(-3px); }
+    40%{ transform:translateX(3px); }
+    60%{ transform:translateX(-2px); }
+    80%{ transform:translateX(2px); }
+  }
+
   .inkbar{
     width:min(520px, 58vw); height:10px;
     background:var(--line);
@@ -823,8 +849,15 @@
     <div class="badgeRow fade-ui">
       <span class="alarmBadge" id="alarmDisplay" title="click to set a countdown alarm">+ alarm</span>
       <input class="alarmInput" id="alarmInput" type="number" min="1" max="240" placeholder="minutes" style="display:none;">
+      <div class="alarmPresets" id="alarmPresets" style="display:none;">
+        <button class="presetChip" type="button" data-mins="50">50</button>
+        <button class="presetChip" type="button" data-mins="25">25</button>
+        <button class="presetChip" type="button" data-mins="15">15</button>
+        <button class="presetChip" type="button" data-mins="5">5</button>
+      </div>
       <span class="alarmBadge" id="checkinBadge" title="click to get a notification every 30 min while a task is running, even in another tab">🔕 check-ins off</span>
       <span class="alarmBadge" id="trashBadge" title="view recently deleted items">🗑 trash</span>
+      <span class="alarmBadge" id="floatBadge" title="pop out a floating timer that stays on top of other apps (f)" style="display:none;">⧉ float</span>
       <div class="sessions" id="sessions"><span class="count">0</span> done today</div>
     </div>
 
@@ -1035,6 +1068,37 @@
       alarmDisplay.title = 'click to set a countdown alarm';
       alarmDisplay.classList.remove('armed', 'ringing');
     }
+    if(typeof updatePipMirror === 'function') updatePipMirror();
+  }
+
+  const alarmPresets = document.getElementById('alarmPresets');
+
+  // arms the alarm for `mins` minutes from now — shared by the Enter key,
+  // the preset chips, and the floating mini-window's own preset chips
+  function armAlarm(mins){
+    if(mins && mins > 0){
+      getAudioCtx(); // unlock audio now, during this user gesture
+      alarmTargetSeconds = currentSeconds() + Math.round(mins * 60);
+      alarmFired = false;
+    }
+    closeAlarmInput();
+    saveState();
+  }
+
+  function openAlarmInput(){
+    alarmDisplay.style.display = 'none';
+    alarmInput.style.display = 'inline-block';
+    alarmPresets.style.display = 'flex';
+    alarmInput.value = '';
+    alarmInput.placeholder = 'e.g. 25';
+    alarmInput.focus();
+  }
+
+  function closeAlarmInput(){
+    alarmInput.style.display = 'none';
+    alarmPresets.style.display = 'none';
+    alarmDisplay.style.display = 'inline-block';
+    updateAlarmDisplay();
   }
 
   alarmDisplay.addEventListener('click', ()=>{
@@ -1048,37 +1112,173 @@
       saveState();
       return;
     }
-    alarmDisplay.style.display = 'none';
-    alarmInput.style.display = 'inline-block';
-    alarmInput.value = '';
-    alarmInput.placeholder = 'e.g. 25';
-    alarmInput.focus();
+    openAlarmInput();
+  });
+
+  // prevent the chip from stealing focus on mousedown — otherwise it blurs
+  // alarmInput first, which hides the presets before the click can land
+  alarmPresets.addEventListener('mousedown', (e)=>{
+    if(e.target.closest('.presetChip')) e.preventDefault();
+  });
+  alarmPresets.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.presetChip');
+    if(!btn) return;
+    armAlarm(parseFloat(btn.dataset.mins));
   });
 
   alarmInput.addEventListener('keydown', (e)=>{
     e.stopPropagation(); // don't let the global space/t shortcuts fire while typing here
     if(e.key === 'Enter'){
-      const mins = parseFloat(alarmInput.value);
-      if(mins && mins > 0){
-        getAudioCtx(); // unlock audio now, during this user gesture
-        alarmTargetSeconds = currentSeconds() + Math.round(mins * 60);
-        alarmFired = false;
-      }
-      alarmInput.style.display = 'none';
-      alarmDisplay.style.display = 'inline-block';
-      updateAlarmDisplay();
-      saveState();
+      armAlarm(parseFloat(alarmInput.value));
     } else if(e.key === 'Escape'){
-      alarmInput.style.display = 'none';
-      alarmDisplay.style.display = 'inline-block';
-      updateAlarmDisplay();
+      closeAlarmInput();
     }
   });
   alarmInput.addEventListener('blur', ()=>{
-    alarmInput.style.display = 'none';
-    alarmDisplay.style.display = 'inline-block';
-    updateAlarmDisplay();
+    closeAlarmInput();
   });
+
+  // ---- floating mini-window: a real always-on-top window (via Document
+  // Picture-in-Picture) that mirrors the task/timer/alarm and stays on top
+  // of every app, not just the browser — for glancing at while in Slack,
+  // Keynote, etc. It shares this page's JS realm, so its buttons just
+  // forward-click the real buttons rather than duplicating any logic. ----
+  const floatBadge = document.getElementById('floatBadge');
+  let pipWindow = null;
+  let pipEls = null;
+
+  function pipSupported(){
+    return typeof window !== 'undefined' && 'documentPictureInPicture' in window;
+  }
+
+  function buildPipContent(doc){
+    doc.title = 'One Thing';
+    Array.from(document.querySelectorAll('style')).forEach(node=>{
+      doc.head.appendChild(node.cloneNode(true));
+    });
+
+    const style = doc.createElement('style');
+    style.textContent = `
+      html,body{ margin:0; min-height:100%; }
+      body{
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:10px; padding:14px; box-sizing:border-box; min-height:100vh;
+        background:var(--green); color:var(--cream);
+        font-family:'Fraunces', Georgia, serif;
+        transition:background 0.3s ease;
+      }
+      .pipTask{
+        font-size:13px; opacity:0.75; max-width:100%;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;
+      }
+      .pipTimer{
+        font-family:'JetBrains Mono', monospace; font-weight:800;
+        font-size:40px; font-variant-numeric:tabular-nums; color:var(--cream);
+      }
+      .pipTimer.ringing{ color:var(--gold); animation:pipShake 0.4s ease-in-out infinite; }
+      .pipAlarm{ font-family:'JetBrains Mono', monospace; font-size:12px; opacity:0.8; color:var(--gold-dim); }
+      .pipRow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
+      .pipBtn{
+        background:none; border:1px solid var(--line); color:var(--cream);
+        cursor:pointer; padding:6px 12px; border-radius:999px;
+        font-family:'JetBrains Mono', monospace; font-size:10.5px;
+        letter-spacing:0.06em; text-transform:uppercase;
+      }
+      .pipBtn:hover{ border-color:var(--gold); color:var(--gold); }
+      .pipAlarmBtn{ font-size:10px; opacity:0.75; }
+      .pipPresets{ display:flex; gap:5px; }
+    `;
+    doc.head.appendChild(style);
+
+    const task = doc.createElement('div'); task.className = 'pipTask';
+    const timer = doc.createElement('div'); timer.className = 'pipTimer';
+    const alarm = doc.createElement('div'); alarm.className = 'pipAlarm';
+
+    const row = doc.createElement('div'); row.className = 'pipRow';
+    const startPauseBtnPip = doc.createElement('button');
+    startPauseBtnPip.type = 'button'; startPauseBtnPip.className = 'pipBtn';
+    const doneBtnPip = doc.createElement('button');
+    doneBtnPip.type = 'button'; doneBtnPip.className = 'pipBtn'; doneBtnPip.textContent = 'mark done';
+    const dismissBtnPip = doc.createElement('button');
+    dismissBtnPip.type = 'button'; dismissBtnPip.className = 'pipBtn'; dismissBtnPip.textContent = 'dismiss alarm';
+    dismissBtnPip.style.display = 'none';
+    const alarmBtnPip = doc.createElement('button');
+    alarmBtnPip.type = 'button'; alarmBtnPip.className = 'pipBtn pipAlarmBtn'; alarmBtnPip.textContent = '+ alarm';
+
+    startPauseBtnPip.addEventListener('click', ()=> startPauseBtn.click());
+    doneBtnPip.addEventListener('click', ()=> doneBtn.click());
+    dismissBtnPip.addEventListener('click', ()=> alarmDisplay.click());
+
+    const presetsPip = doc.createElement('div');
+    presetsPip.className = 'pipPresets';
+    presetsPip.style.display = 'none';
+    [50, 25, 15, 5].forEach(mins=>{
+      const chip = doc.createElement('button');
+      chip.type = 'button'; chip.className = 'pipBtn';
+      chip.textContent = String(mins);
+      chip.addEventListener('click', ()=>{
+        armAlarm(mins);
+        presetsPip.style.display = 'none';
+      });
+      presetsPip.appendChild(chip);
+    });
+    alarmBtnPip.addEventListener('click', ()=>{
+      if(alarmTargetSeconds != null || alarmRinging) return; // already armed/ringing — nothing to reveal
+      presetsPip.style.display = presetsPip.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    row.appendChild(startPauseBtnPip);
+    row.appendChild(doneBtnPip);
+    row.appendChild(dismissBtnPip);
+
+    doc.body.appendChild(task);
+    doc.body.appendChild(timer);
+    doc.body.appendChild(alarm);
+    doc.body.appendChild(alarmBtnPip);
+    doc.body.appendChild(presetsPip);
+    doc.body.appendChild(row);
+
+    pipEls = { task, timer, alarm, startPauseBtn: startPauseBtnPip, dismissBtn: dismissBtnPip, alarmBtn: alarmBtnPip, presets: presetsPip };
+  }
+
+  function updatePipMirror(){
+    if(!pipWindow || !pipEls) return;
+    pipWindow.document.body.className = document.body.className;
+    const text = taskEl.textContent.trim();
+    pipEls.task.textContent = text || 'what matters right now';
+    pipEls.timer.textContent = fmt(seconds);
+    pipEls.timer.classList.toggle('ringing', alarmRinging);
+    pipEls.alarm.textContent = alarmDisplay.textContent;
+    pipEls.startPauseBtn.textContent = running ? 'pause' : 'start';
+    pipEls.dismissBtn.style.display = alarmRinging ? 'inline-block' : 'none';
+    pipEls.alarmBtn.style.display = (alarmTargetSeconds != null || alarmRinging) ? 'none' : 'inline-block';
+    if(alarmTargetSeconds != null || alarmRinging) pipEls.presets.style.display = 'none';
+  }
+
+  async function toggleFloat(){
+    if(!pipSupported()) return;
+    if(pipWindow){
+      pipWindow.close();
+      return;
+    }
+    try{
+      pipWindow = await window.documentPictureInPicture.requestWindow({ width: 320, height: 180 });
+    }catch(err){
+      pipWindow = null;
+      return; // permission dismissed, or unsupported in this context — fail quietly
+    }
+    buildPipContent(pipWindow.document);
+    updatePipMirror();
+    pipWindow.addEventListener('pagehide', ()=>{
+      pipWindow = null;
+      pipEls = null;
+    }, { once: true });
+  }
+
+  if(floatBadge && pipSupported()){
+    floatBadge.style.display = 'inline-block';
+    floatBadge.addEventListener('click', toggleFloat);
+  }
 
   // ---- check-in reminders: a browser notification every 30 min while running,
   // even when this tab is backgrounded or another window has focus (as long
@@ -1195,6 +1395,7 @@
     }, 1000);
     updateActionHierarchy();
     saveState();
+    if(typeof updatePipMirror === 'function') updatePipMirror();
   }
 
   function pause(){
@@ -1205,6 +1406,7 @@
     clearInterval(intervalId);
     updateActionHierarchy();
     saveState();
+    if(typeof updatePipMirror === 'function') updatePipMirror();
   }
 
   // when the tab regains visibility, snap the display to the real
@@ -1522,6 +1724,7 @@
     updateModeNudge();
 
     loadState();
+    if(typeof updatePipMirror === 'function') updatePipMirror();
   }
 
   modeSwitchEl.addEventListener('click', ()=>{
@@ -1757,6 +1960,7 @@
       pause();
     }
     saveState();
+    if(typeof updatePipMirror === 'function') updatePipMirror();
   });
 
   // Enter commits the task instead of opening a new line — the timer's
@@ -1799,6 +2003,10 @@
     if(e.key === 'Tab' && !typing){
       e.preventDefault();
       switchMode(currentMode === 'work' ? 'personal' : 'work');
+    }
+    if(e.key.toLowerCase() === 'f' && !typing && pipSupported()){
+      e.preventDefault();
+      toggleFloat();
     }
   });
 
