@@ -1394,6 +1394,14 @@
       saveState();
     }, 1000);
     updateActionHierarchy();
+
+    // every task gets a 25-min alarm by default, unless one's already set
+    if(alarmTargetSeconds == null && !alarmRinging){
+      armAlarm(25);
+    }
+
+    if(!uiHidden) toggleUiHidden();
+
     saveState();
     if(typeof updatePipMirror === 'function') updatePipMirror();
   }
