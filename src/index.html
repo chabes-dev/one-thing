@@ -2071,7 +2071,7 @@
 
     let state;
     try{ state = JSON.parse(raw); } catch(err){ return; }
-    if(!state || state.date !== todayStr()) return; // new day, start fresh
+    if(!state) return; // carries over across days — picks up where you left off
 
     if(state.task) taskEl.textContent = state.task;
     seconds = state.seconds || 0;
