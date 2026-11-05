@@ -1956,6 +1956,7 @@
     clearMeetingState();
     renderTimer();
     taskEl.textContent = '';
+    if(uiHidden) toggleUiHidden(); // back to a full view so you can pick the next thing
     taskEl.focus();
     saveState();
   });
