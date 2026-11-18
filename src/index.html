@@ -135,6 +135,10 @@
     box-shadow:0 1px 0 rgba(255,255,255,.55) inset,0 -4px 10px -8px rgba(0,0,0,.45),0 8px 18px -14px rgba(0,0,0,.8);
     transition:background .15s,box-shadow .15s}
   .tcard:first-child{margin-top:0}
+  .tcard.open{height:auto;min-height:54px;padding-top:15px;padding-bottom:15px;align-items:flex-start;z-index:50!important}
+  .tcard.open .t{white-space:normal;height:auto;line-height:1.3;display:block}
+  .tcard.open .t span{overflow:visible;text-overflow:clip}
+  .tcard.open .tick,.tcard.open .stamp{margin-top:1px}
   .tcard:hover{background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.1) 70%),var(--card2);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 0 0 1.5px color-mix(in srgb,var(--accent) 70%,transparent),0 8px 18px -14px rgba(0,0,0,.8)}
   .tcard .t{flex:1;min-width:0;background:transparent;border:none;padding:0;text-align:left;color:inherit;font-size:16.5px;font-weight:500;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:100%;display:flex;align-items:center}
   .tcard .t span{overflow:hidden;text-overflow:ellipsis}
@@ -187,6 +191,21 @@
   .table{transition:grid-template-columns .6s var(--ease),column-gap .6s var(--ease)}
   body.hidden .table{grid-template-columns:0 minmax(0,1fr) 0;column-gap:0}
   body.hidden .side,body.hidden .colhead{overflow:hidden;visibility:hidden}
+  .pbar,.worklabel{display:none}
+  body.hidden .main{min-height:0;max-width:640px;padding:46px 56px 40px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0}
+  body.hidden .main::after{inset:9px}
+  body.hidden .mhead{display:none}
+  body.hidden.ringing .mhead{display:flex;position:absolute;top:22px;right:22px}
+  body.hidden .body{padding-top:0;align-items:center;width:100%}
+  body.hidden .task{text-align:center;field-sizing:content;height:auto;min-height:0;max-height:2.3em;font-size:34px!important;line-height:1.15;color:var(--cardInk)}
+  body.hidden .steps,body.hidden .stepin,body.hidden .stepline,body.hidden .acts,body.hidden .clock>.cap{display:none}
+  body.hidden .foot{border-top:none;padding-top:26px;justify-content:center;width:100%}
+  body.hidden .clock{align-items:center;gap:0}
+  body.hidden .time{font-size:126px}
+  body.hidden .pbar{display:block;width:220px;height:3px;border-radius:3px;margin-top:22px;background:color-mix(in srgb,var(--cardInk) 10%,transparent);overflow:hidden}
+  body.hidden .pbar i{display:block;height:100%;background:var(--stamp);border-radius:3px;transition:width 1s linear}
+  body.hidden .worklabel{display:block;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--cardMuted)}
+  body.hidden.ringing .worklabel{color:var(--stamp)}
   body{--glowHiddenOn:0}
   body.hidden{--glow:var(--glowHidden)}
 
@@ -366,7 +385,7 @@ function flash(t){ const m=document.querySelector('.msg'); if(m){m.textContent=t
 /* ---------- undo: one step back for anything that moves or deletes a card ---------- */
 let UNDO=null, toastT=null;
 const trunc=(t)=>t.length>34?t.slice(0,32)+'…':t;
-function snap(msg){ UNDO={d:JSON.stringify(D),mode:P.mode}; UI.toast=msg; clearTimeout(toastT); toastT=setTimeout(()=>{UI.toast=null;const el=document.querySelector('.toast');if(el)el.remove();},6000); }
+function snap(msg){ UI.open=null; UNDO={d:JSON.stringify(D),mode:P.mode}; UI.toast=msg; clearTimeout(toastT); toastT=setTimeout(()=>{UI.toast=null;const el=document.querySelector('.toast');if(el)el.remove();},6000); }
 function undo(){ if(!UNDO||UNDO.mode!==P.mode) return; D=JSON.parse(UNDO.d); if(D.running) D.startEpoch=D.startEpoch||Date.now(); UNDO=null; UI.toast=null; clearAlarm(); render(); }
 
 /* ---------- core moves (same rules as the original) ---------- */
@@ -383,23 +402,24 @@ function beginWith(item){ UI.stepsOpen=false; // a card becomes the one thing: r
 const otherMode=()=>P.mode==='work'?'personal':'work';
 function otherHasDoneToday(){ const o=read(K.state(otherMode())); return !!(o&&o.date===todayStr()&&(o.doneItems||[]).length); }
 
+const pct=(t)=>D.alarmAt?Math.max(0,Math.min(100,t/D.alarmAt*100)).toFixed(2):0;
 const totalSecs=()=>D.done.reduce((a,c)=>a+(c.secs||0),0)+(D.focus?cur():0);
 const totalNice=()=>{const t=totalSecs();return t<60?'0m':t<3600?Math.floor(t/60)+'m':Math.floor(t/3600)+'h '+pad(Math.floor(t/60)%60)+'m';};
 /* ---------- views ---------- */
 function upNext(){
-  if(!D.also.length) return `<div class="placeholder" style="flex-direction:column;gap:4px;height:auto;padding:18px;text-align:center">no cards waiting<span class="hint" style="font-style:normal">type below, or paste a list. Click a card to tick it off · drag one onto the table to start it</span></div>`;
-  return D.also.map((c,i)=>`<div class="tcard" draggable="true" data-from="also" data-i="${i}" style="z-index:${i+1}">
+  if(!D.also.length) return `<div class="placeholder" style="flex-direction:column;gap:4px;height:auto;padding:18px;text-align:center">no cards waiting<span class="hint" style="font-style:normal">type below, or paste a list. Tick the circle to finish a card · click it to read it all · drag it onto the table to start it</span></div>`;
+  return D.also.map((c,i)=>`<div class="tcard ${UI.open==='also:'+i?'open':''}" draggable="true" data-from="also" data-i="${i}" style="z-index:${i+1}">
     <button class="tick" data-act="check" data-i="${i}" aria-label="Mark done">${ic('check',3,12)}</button>
-    <button class="t" data-act="check" data-i="${i}" title="Click to tick off · drag onto the table to start it"><span>${esc(c.t)}</span></button>
+    <button class="t" data-act="expand" data-k="also:${i}" title="Click to read it all · tick the circle to finish · drag onto the table to start"><span>${esc(c.t)}</span></button>
     ${c.secs||c.meeting?`<span class="meta">${c.meeting?'mtg · ':''}${c.secs?short(c.secs):''}</span>`:''}
     <span class="hov"><button class="mini" data-act="trash" data-list="also" data-i="${i}" aria-label="Move to trash">${ic('x',2,13)}</button></span>
   </div>`).join('');
 }
 function pile(){
   if(!D.done.length) return `<div class="placeholder" style="flex-direction:column;gap:4px;height:auto;padding:18px;text-align:center">nothing yet — that's fine<span class="hint" style="font-style:normal">finished cards land here · hover one to resume it</span></div>`;
-  return D.done.map((c,i)=>`<div class="tcard donecard" draggable="true" data-from="done" data-i="${i}" style="z-index:${D.done.length-i}">
+  return D.done.map((c,i)=>`<div class="tcard donecard ${UI.open==='done:'+i?'open':''}" draggable="true" data-from="done" data-i="${i}" style="z-index:${D.done.length-i}">
     <span class="stamp">${ic('check',2.6,10)}${c.at||''}</span>
-    <span class="t" title="${esc(c.t)}"><span>${esc(c.t)}</span></span>
+    <button class="t" data-act="expand" data-k="done:${i}" title="Click to read it all"><span>${esc(c.t)}</span></button>
     <span class="meta">${c.meeting?'mtg · ':''}${short(c.secs||0)}</span>
     <span class="hov"><button class="mini" data-act="resume" data-i="${i}" title="Resume (current one goes to up next)">${ic('reset',2,12)} resume</button><button class="mini" data-act="trash" data-list="done" data-i="${i}" aria-label="Move to trash">${ic('x',2,13)}</button></span>
   </div>`).join('');
@@ -452,7 +472,7 @@ function tableView(){
             ${stepsView()}
           </div>
           <div class="foot">
-            <div class="clock"><span class="cap fade">${clockLabel}</span><div class="time ${t>=3600?'long':''}" data-time>${fmt(t)}</div></div>
+            <div class="clock"><span class="cap fade">${clockLabel}</span><div class="time ${t>=3600?'long':''}" data-time>${fmt(t)}</div><div class="pbar" aria-hidden="true"><i data-pbar style="width:${pct(t)}%"></i></div><span class="worklabel">${D.alarmAt!=null?(ringing?'time’s up':'alarm at '+fmt(D.alarmAt)):'no alarm set'}</span></div>
             <div class="acts fade">
               <button class="cbtn ${!D.running?'primary':''}" data-act="run" ${D.focus?'':'disabled'}>${D.running?'pause':'start'}</button>
               <button class="cbtn ${D.running?'primary':''}" data-act="done" ${D.focus?'':'disabled'}>${ic('check',2.2,16)}done <kbd>D</kbd></button>
@@ -540,6 +560,7 @@ function tick(){
   if(m&&m.stage==='during'){const el=app.querySelector('[data-mtime]');if(el)el.textContent=fmt(Math.floor((Date.now()-m.startEpoch)/1000));return;}
   const t=cur();
   app.querySelectorAll('[data-time]').forEach(el=>{el.textContent=fmt(t);el.classList.toggle('long',t>=3600);});
+  const pb=app.querySelector('[data-pbar]'); if(pb) pb.style.width=pct(t)+'%';
   const tot=app.querySelector('[data-total]'); if(tot) tot.textContent=totalNice();
   if(D.alarmAt!=null&&!D.alarmFired&&t>=D.alarmAt){D.alarmFired=true;startRinging();render();}
   if(P.checkins&&D.running&&t>=D.lastCheckin+CHECKIN){
@@ -572,6 +593,7 @@ const acts={
   deal:(el)=>dropOnTable({from:'also',i:+el.dataset.i}),
   resume:(el)=>dropOnTable({from:'done',i:+el.dataset.i}),
   undo:()=>undo(),
+  expand:(el)=>{UI.open=UI.open===el.dataset.k?null:el.dataset.k;render();},
   steps:()=>{UI.stepsOpen=!UI.stepsOpen;render();if(UI.stepsOpen)refocus('[data-in=step]');},
   check:(el)=>{ // original: clicking a parked item ticks it off
     const i=+el.dataset.i, row=el.closest('.tcard'); if(!row||row.classList.contains('checking')) return;
